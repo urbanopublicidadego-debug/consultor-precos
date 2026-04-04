@@ -3,174 +3,119 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Scanner de Preços - Versão Corrigida</title>
+    <title>Scanner Estável - Sem Loop</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
     <style>
         body { font-family: sans-serif; background-color: #121212; color: white; margin: 0; padding: 15px; display: flex; flex-direction: column; align-items: center; }
         .btn { width: 100%; max-width: 300px; padding: 15px; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; margin-bottom: 10px; }
         .btn-scan { background: #2ecc71; color: white; font-size: 18px; }
         .btn-save { background: #3498db; color: white; }
-        .btn-util { background: #444; color: white; font-size: 12px; width: 48%; border-radius: 5px; cursor: pointer; }
-        
-        #camera { width: 100%; max-width: 400px; height: 220px; background: #000; border-radius: 15px; overflow: hidden; display: none; position: relative; border: 2px solid #2ecc71; margin-bottom: 15px; }
+        #camera { width: 100%; max-width: 400px; height: 250px; background: #000; border-radius: 15px; overflow: hidden; display: none; position: relative; border: 3px solid #2ecc71; margin-bottom: 15px; }
         #camera video { width: 100%; height: 100%; object-fit: cover; }
-        #camera::after { content: ""; position: absolute; top: 50%; left: 10%; width: 80%; height: 2px; background: red; box-shadow: 0 0 10px red; }
-
-        .card { background: #1e1e1e; padding: 20px; width: 100%; max-width: 350px; border-radius: 15px; border-bottom: 4px solid #2ecc71; box-sizing: border-box; text-align: center; margin-bottom: 15px; }
+        #camera::after { content: ""; position: absolute; top: 50%; left: 5%; width: 90%; height: 2px; background: red; box-shadow: 0 0 10px red; }
+        .card { background: #1e1e1e; padding: 20px; width: 100%; max-width: 350px; border-radius: 15px; border-bottom: 4px solid #2ecc71; box-sizing: border-box; text-align: center; }
         input { width: 100%; padding: 12px; margin: 8px 0; border-radius: 8px; border: 1px solid #333; background: #222; color: white; box-sizing: border-box; font-size: 16px; }
-        
-        #listaProdutos { width: 100%; max-width: 350px; text-align: left; font-size: 14px; background: #252525; border-radius: 10px; padding: 15px; display:none; border: 1px solid #444; margin-top: 10px; }
-        .item-lista { border-bottom: 1px solid #333; padding: 10px 0; display: flex; justify-content: space-between; align-items: center; }
-        .btn-del { background: #e74c3c; color: white; border: none; border-radius: 5px; padding: 5px 10px; cursor: pointer; }
+        .item-lista { border-bottom: 1px solid #333; padding: 10px 0; display: flex; justify-content: space-between; }
     </style>
 </head>
 <body>
 
-    <h2>🔎 Scanner de Preços</h2>
+    <h2>🔎 Consultor de Preços</h2>
     
-    <button class="btn btn-scan" id="btnAbrir" onclick="ligarCamera()">ABRIR CÂMERA</button>
+    <button class="btn btn-scan" id="btnIniciar" onclick="ligarCamera()">LER CÓDIGO DE BARRAS</button>
 
     <div id="camera"></div>
 
-    <div id="resultado" class="card">Aguardando leitura...</div>
+    <div id="resultado" class="card">Aguardando...</div>
 
-    <!-- Formulário de Cadastro -->
-    <div id="formCadastro" class="card" style="display:none;">
-        <h3 style="margin:0; color:#3498db;">Novo Produto Detectado</h3>
-        <input type="text" id="cadCodigo" readonly style="background:#111; color:#888;">
+    <div id="formCadastro" class="card" style="display:none; margin-top:10px;">
+        <h3>Novo Produto</h3>
+        <input type="text" id="cadCodigo" readonly style="color:#888;">
         <input type="text" id="cadNome" placeholder="Nome do Produto">
-        <input type="number" id="cadPrecoX" step="0.01" placeholder="Preço R$">
-        <button class="btn btn-save" onclick="salvarNoBanco()">SALVAR NO DISPOSITIVO</button>
+        <input type="number" id="cadPreco" step="0.01" placeholder="Preço R$">
+        <button class="btn btn-save" onclick="salvar()">SALVAR</button>
     </div>
 
-    <!-- Botões de Controle -->
-    <div style="width: 100%; max-width: 350px; display: flex; justify-content: space-between; margin-bottom: 10px;">
-        <button class="btn btn-util" onclick="exportarDados()">📥 EXPORTAR</button>
-        <button class="btn btn-util" onclick="document.getElementById('inputImport').click()">📤 IMPORTAR</button>
-        <input type="file" id="inputImport" style="display:none" onchange="importarDados(event)">
+    <div style="margin-top:20px; width:100%; max-width:350px; display:flex; gap:10px;">
+        <button onclick="exportar()" style="flex:1; padding:10px; background:#444; color:white; border:none; border-radius:5px;">EXPORTAR</button>
+        <button onclick="limpar()" style="flex:1; padding:10px; background:#c0392b; color:white; border:none; border-radius:5px;">LIMPAR TUDO</button>
     </div>
-
-    <button class="btn btn-util" style="width:100%; background:#222; border: 1px solid #444;" onclick="toggleLista()">📋 LISTA DE ITENS</button>
-    
-    <div id="listaProdutos"></div>
 
 <script>
-    // 1. Variável global que carrega o que já existe no celular
     let estoque = JSON.parse(localStorage.getItem('meuEstoque')) || [];
 
     function ligarCamera() {
-        document.getElementById('resultado').innerHTML = "Buscando código...";
+        // Limpa a tela
+        document.getElementById('camera').style.display = "block";
+        document.getElementById('btnIniciar').style.display = "none";
         document.getElementById('formCadastro').style.display = "none";
-        document.getElementById('listaProdutos').style.display = "none";
-        document.getElementById('btnAbrir').style.display = "none";
-        
-        const camDiv = document.getElementById('camera');
-        camDiv.style.display = "block";
+        document.getElementById('resultado').innerHTML = "Buscando...";
 
         Quagga.init({
-            inputStream: { name: "Live", type: "LiveStream", target: camDiv, constraints: { facingMode: "environment" } },
-            decoder: { readers: ["ean_reader", "code_128_reader", "ean_8_reader"] }
+            inputStream: { name: "Live", type: "LiveStream", target: document.getElementById('camera'), constraints: { facingMode: "environment" } },
+            decoder: { readers: ["ean_reader", "ean_8_reader", "code_128_reader"] },
+            locate: true
         }, function(err) {
-            if (err) { alert("Câmera não disponível."); return; }
+            if (err) return alert("Erro na câmera");
             Quagga.start();
         });
+
+        // ESCUTA UMA VEZ E PARA (A trava anti-loop)
+        Quagga.onDetected(ouvirCodigo);
     }
 
-    // 2. O que acontece quando o scanner lê algo
-    Quagga.onDetected(function(data) {
+    function ouvirCodigo(data) {
         const codigo = data.codeResult.code;
+        
+        // PARA TUDO IMEDIATAMENTE
         Quagga.stop();
+        Quagga.offDetected(ouvirCodigo); // Desliga o "ouvido" do scanner
+        
         document.getElementById('camera').style.display = "none";
-        document.getElementById('btnAbrir').style.display = "block";
+        document.getElementById('btnIniciar').style.display = "block";
         
-        // RECARREGA o estoque do banco de dados antes de processar
+        processar(codigo);
+    }
+
+    function processar(codigo) {
         estoque = JSON.parse(localStorage.getItem('meuEstoque')) || [];
-        processarLeitura(codigo);
-    });
+        const p = estoque.find(x => x.codigo === codigo);
 
-    function processarLeitura(codigo) {
-        const resDiv = document.getElementById('resultado');
-        const form = document.getElementById('formCadastro');
-        
-        // Busca o produto na lista atualizada
-        const produto = estoque.find(p => p.codigo === codigo);
-
-        if (produto) {
-            form.style.display = "none";
-            resDiv.innerHTML = `
-                <h2 style="color:#2ecc71;">${produto.nome}</h2>
-                <div style="font-size:32px; font-weight:bold;">R$ ${parseFloat(produto.precoX).toFixed(2)}</div>
-                <small>Cód: ${codigo}</small><br>
-                <button class="btn btn-scan" style="margin-top:15px;" onclick="ligarCamera()">LER PRÓXIMO</button>
+        if (p) {
+            document.getElementById('resultado').innerHTML = `
+                <h2 style="color:#2ecc71; margin:0;">${p.nome}</h2>
+                <div style="font-size:35px; font-weight:bold;">R$ ${parseFloat(p.preco).toFixed(2)}</div>
+                <small>Cód: ${codigo}</small>
             `;
         } else {
-            resDiv.innerHTML = `<p style="color:#e74c3c;">Produto não cadastrado!</p><small>${codigo}</small>`;
+            document.getElementById('resultado').innerHTML = "Produto não encontrado!";
             document.getElementById('cadCodigo').value = codigo;
             document.getElementById('cadNome').value = "";
-            document.getElementById('cadPrecoX').value = "";
-            form.style.display = "block";
+            document.getElementById('cadPreco').value = "";
+            document.getElementById('formCadastro').style.display = "block";
         }
     }
 
-    function salvarNoBanco() {
-        const codigo = document.getElementById('cadCodigo').value;
+    function salvar() {
+        const cod = document.getElementById('cadCodigo').value;
         const nome = document.getElementById('cadNome').value;
-        const precoX = document.getElementById('cadPrecoX').value;
-        
-        if(!nome || !precoX) { alert("Por favor, preencha o nome e o preço."); return; }
+        const preco = document.getElementById('cadPreco').value;
+        if(!nome || !preco) return alert("Preencha tudo");
 
-        // Adiciona à lista e salva no celular
-        estoque.push({ codigo, nome, precoX });
+        estoque.push({ codigo: cod, nome, preco });
         localStorage.setItem('meuEstoque', JSON.stringify(estoque));
-        
-        alert("Produto salvo com sucesso!");
+        alert("Salvo!");
         document.getElementById('formCadastro').style.display = "none";
-        
-        // Mostra o resultado do que acabou de cadastrar
-        processarLeitura(codigo);
+        processar(cod);
     }
 
-    // Funções de Lista e Backup
-    function toggleLista() {
-        const listaDiv = document.getElementById('listaProdutos');
-        if (listaDiv.style.display === "none") {
-            estoque = JSON.parse(localStorage.getItem('meuEstoque')) || [];
-            listaDiv.innerHTML = "<h4>Itens Salvos:</h4>";
-            estoque.forEach(p => {
-                listaDiv.innerHTML += `
-                    <div class="item-lista">
-                        <span>${p.nome} - <b>R$ ${p.precoX}</b></span>
-                        <button class="btn-del" onclick="removerItem('${p.codigo}')">X</button>
-                    </div>`;
-            });
-            listaDiv.style.display = "block";
-        } else {
-            listaDiv.style.display = "none";
-        }
-    }
-
-    function removerItem(codigo) {
-        if(confirm("Deseja excluir este item?")) {
-            estoque = estoque.filter(p => p.codigo !== codigo);
-            localStorage.setItem('meuEstoque', JSON.stringify(estoque));
-            document.getElementById('listaProdutos').style.display = "none";
-            toggleLista();
-        }
-    }
-
-    function exportarDados() {
+    function exportar() {
         const blob = new Blob([JSON.stringify(estoque)], {type: 'application/json'});
-        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = "meu_estoque.json"; a.click();
+        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = "precos.json"; a.click();
     }
 
-    function importarDados(event) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            const importado = JSON.parse(e.target.result);
-            localStorage.setItem('meuEstoque', JSON.stringify(importado));
-            location.reload();
-        };
-        reader.readAsText(event.target.files[0]);
+    function limpar() {
+        if(confirm("Apagar tudo?")) { localStorage.removeItem('meuEstoque'); location.reload(); }
     }
 </script>
 </body>
