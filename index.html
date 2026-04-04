@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Consultor de Preços Ultra</title>
+    <title>Consultor de Preços Pro</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
     <style>
         body { font-family: sans-serif; background-color: #121212; color: white; margin: 0; padding: 15px; display: flex; flex-direction: column; align-items: center; }
@@ -20,8 +20,9 @@
         input { width: 100%; padding: 12px; margin: 8px 0; border-radius: 8px; border: 1px solid #333; background: #222; color: white; box-sizing: border-box; font-size: 16px; }
         
         #listaProdutos { width: 100%; max-width: 350px; text-align: left; font-size: 14px; background: #252525; border-radius: 10px; padding: 15px; display:none; border: 1px solid #444; margin-top: 10px; }
-        .item-lista { border-bottom: 1px solid #333; padding: 8px 0; display: flex; justify-content: space-between; align-items: center; }
+        .item-lista { border-bottom: 1px solid #333; padding: 10px 0; display: flex; justify-content: space-between; align-items: center; }
         .item-lista:last-child { border: none; }
+        .btn-del { background: #e74c3c; color: white; border: none; border-radius: 5px; padding: 5px 10px; cursor: pointer; font-weight: bold; margin-left: 10px; }
     </style>
 </head>
 <body>
@@ -49,26 +50,20 @@
         <input type="file" id="inputImport" style="display:none" onchange="importarDados(event)">
     </div>
 
-    <button class="btn btn-util" style="width:100%; background:#c0392b;" onclick="limparTudo()">⚠️ APAGAR TODOS OS DADOS</button>
-    
     <button class="btn btn-util" style="width:100%; background:#222; border: 1px solid #444;" onclick="toggleLista()">📋 VER TODOS OS ITENS</button>
     
     <div id="listaProdutos"></div>
 
 <script>
-    // Inicia estoque lendo do celular
     let estoque = JSON.parse(localStorage.getItem('meuEstoque')) || [];
 
     function ligarCamera() {
         document.getElementById('resultado').innerHTML = "Buscando código...";
         document.getElementById('formCadastro').style.display = "none";
         document.getElementById('listaProdutos').style.display = "none";
-        
-        Quagga.stop(); // Garante que o leitor anterior parou
-
+        Quagga.stop();
         const camDiv = document.getElementById('camera');
         camDiv.style.display = "block";
-
         Quagga.init({
             inputStream: { name: "Live", type: "LiveStream", target: camDiv, constraints: { facingMode: "environment" } },
             decoder: { readers: ["ean_reader", "code_128_reader"] }
@@ -88,8 +83,6 @@
     function processarLeitura(codigo) {
         const resDiv = document.getElementById('resultado');
         const form = document.getElementById('formCadastro');
-        
-        // Recarrega do storage para garantir que pegamos tudo
         estoque = JSON.parse(localStorage.getItem('meuEstoque')) || [];
         const produto = estoque.find(p => p.codigo === codigo);
 
@@ -117,48 +110,53 @@
         const nome = document.getElementById('cadNome').value;
         const precoX = document.getElementById('cadPrecoX').value;
         const precoC = document.getElementById('cadPrecoC').value;
-
         if(!nome || !precoX) { alert("Preencha Nome e Preço!"); return; }
-
         estoque.push({ codigo, nome, precoX, precoC: precoC || 0 });
         localStorage.setItem('meuEstoque', JSON.stringify(estoque));
-        
         alert("Salvo!");
         document.getElementById('formCadastro').style.display = "none";
         processarLeitura(codigo);
     }
 
-    function toggleLista() {
-        const listaDiv = document.getElementById('listaProdutos');
-        
-        // Se estiver escondido, mostra e carrega os itens
-        if (listaDiv.style.display === "none" || listaDiv.style.display === "") {
-            estoque = JSON.parse(localStorage.getItem('meuEstoque')) || [];
-            
-            if (estoque.length === 0) {
-                alert("Nenhum item cadastrado ainda.");
-                return;
-            }
-
-            listaDiv.innerHTML = "<h4>📋 Itens na Memória:</h4>";
-            estoque.forEach(p => {
-                listaDiv.innerHTML += `
-                    <div class="item-lista">
-                        <span>${p.nome}</span> 
-                        <b>R$ ${parseFloat(p.precoX).toFixed(2)}</b>
-                    </div>`;
-            });
-            listaDiv.style.display = "block";
-        } else {
-            listaDiv.style.display = "none";
+    // NOVA FUNÇÃO: DELETAR ITEM ÚNICO
+    function removerItem(codigo) {
+        if(confirm("Deseja apagar este item permanentemente?")) {
+            estoque = estoque.filter(p => p.codigo !== codigo);
+            localStorage.setItem('meuEstoque', JSON.stringify(estoque));
+            atualizarListaVisual(); // Recarrega a lista na tela
+            document.getElementById('resultado').innerHTML = "Item removido.";
         }
     }
 
-    function limparTudo() {
-        if(confirm("TEM CERTEZA? Isso vai apagar TODOS os preços salvos no seu celular.")) {
-            localStorage.removeItem('meuEstoque');
-            estoque = [];
-            location.reload();
+    function atualizarListaVisual() {
+        const listaDiv = document.getElementById('listaProdutos');
+        estoque = JSON.parse(localStorage.getItem('meuEstoque')) || [];
+        
+        if (estoque.length === 0) {
+            listaDiv.innerHTML = "<p>Nenhum item cadastrado.</p>";
+            return;
+        }
+
+        listaDiv.innerHTML = "<h4>📋 Itens na Memória:</h4>";
+        estoque.forEach(p => {
+            listaDiv.innerHTML += `
+                <div class="item-lista">
+                    <div>
+                        <b>${p.nome}</b><br>
+                        <small>R$ ${parseFloat(p.precoX).toFixed(2)}</small>
+                    </div>
+                    <button class="btn-del" onclick="removerItem('${p.codigo}')">X</button>
+                </div>`;
+        });
+    }
+
+    function toggleLista() {
+        const listaDiv = document.getElementById('listaProdutos');
+        if (listaDiv.style.display === "none" || listaDiv.style.display === "") {
+            atualizarListaVisual();
+            listaDiv.style.display = "block";
+        } else {
+            listaDiv.style.display = "none";
         }
     }
 
@@ -166,10 +164,7 @@
         if(estoque.length === 0) { alert("Nada para exportar."); return; }
         const blob = new Blob([JSON.stringify(estoque)], {type: 'application/json'});
         const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = "meus_precos.json";
-        a.click();
+        const a = document.createElement('a'); a.href = url; a.download = "meus_precos.json"; a.click();
     }
 
     function importarDados(event) {
