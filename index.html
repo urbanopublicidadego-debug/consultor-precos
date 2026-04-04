@@ -3,21 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Meu Consultor de Preços</title>
+    <title>Consultor de Preços Pro</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
     <style>
         body { 
             font-family: sans-serif; background-color: #121212; color: white; 
             margin: 0; padding: 15px; display: flex; flex-direction: column; align-items: center; 
         }
-        h2 { color: #2ecc71; }
+        h2 { color: #2ecc71; margin-bottom: 20px; }
         
         /* Área da Câmera */
         #camera { 
             width: 100%; max-width: 400px; height: 250px; 
             background: #000; border-radius: 15px; overflow: hidden; 
             display: none; position: relative; border: 2px solid #2ecc71;
-            margin-bottom: 15px;
+            margin-bottom: 20px;
         }
         #camera video { width: 100%; height: 100%; object-fit: cover; }
         #camera::after { 
@@ -25,27 +25,29 @@
             width: 80%; height: 2px; background: red; box-shadow: 0 0 8px red; 
         }
 
-        /* Botões e Inputs */
+        /* Botões */
         .btn { 
             width: 100%; max-width: 300px; padding: 15px; border: none; 
             border-radius: 10px; font-weight: bold; font-size: 16px; cursor: pointer; 
-            margin-bottom: 15px;
+            margin-bottom: 15px; transition: 0.3s;
         }
         .btn-scan { background: #2ecc71; color: white; }
         .btn-save { background: #3498db; color: white; margin-top: 10px; }
 
+        /* Inputs do Cadastro */
         input { 
             width: 100%; padding: 12px; margin: 8px 0; border-radius: 8px; 
             border: 1px solid #333; background: #222; color: white; box-sizing: border-box;
         }
 
-        /* Cards de Resultado e Cadastro */
+        /* Cards */
         .card { 
             background: #1e1e1e; padding: 20px; width: 100%; max-width: 350px; 
             border-radius: 15px; border-bottom: 4px solid #2ecc71; box-sizing: border-box;
+            text-align: center;
         }
-        #formCadastro { display: none; margin-top: 15px; }
-        .preco-destaque { color: #2ecc71; font-size: 24px; font-weight: bold; margin: 10px 0; }
+        #formCadastro { display: none; margin-top: 15px; text-align: left; }
+        .preco-destaque { color: #2ecc71; font-size: 28px; font-weight: bold; margin: 10px 0; }
     </style>
 </head>
 <body>
@@ -57,26 +59,38 @@
     <div id="camera"></div>
 
     <div id="resultado" class="card">
-        <p style="text-align:center">Aguardando leitura...</p>
+        <p>Aguardando primeira leitura...</p>
     </div>
 
     <div id="formCadastro" class="card">
-        <h4 style="margin-top:0">Cadastrar Novo Produto</h4>
-        <input type="hidden" id="cadCodigo">
-        <input type="text" id="cadNome" placeholder="Nome do Produto (ex: Óleo)">
-        <input type="number" id="cadPrecoX" step="0.01" placeholder="Seu Preço R$">
-        <input type="number" id="cadPrecoC" step="0.01" placeholder="Preço Concorrente R$">
+        <h4 style="margin-top:0; color:#3498db;">Cadastrar Novo Produto</h4>
+        <label>Código lido:</label>
+        <input type="text" id="cadCodigo" readonly style="color:#888;">
+        
+        <label>Nome do Produto:</label>
+        <input type="text" id="cadNome" placeholder="Ex: Óleo de Soja 900ml">
+        
+        <label>Seu Preço (R$):</label>
+        <input type="number" id="cadPrecoX" step="0.01" placeholder="0.00">
+        
+        <label>Preço Concorrente (R$):</label>
+        <input type="number" id="cadPrecoC" step="0.01" placeholder="0.00">
+        
         <button class="btn btn-save" onclick="salvarNoBanco()">SALVAR NO CELULAR</button>
     </div>
 
 <script>
-    // Inicia o estoque pegando o que já foi salvo ou cria uma lista vazia
+    // Carrega os dados salvos ou inicia vazio
     let estoque = JSON.parse(localStorage.getItem('meuEstoque')) || [];
 
     function ligarCamera() {
         const camDiv = document.getElementById('camera');
+        const resDiv = document.getElementById('resultado');
+        const form = document.getElementById('formCadastro');
+
         camDiv.style.display = "block";
-        document.getElementById('formCadastro').style.display = "none";
+        form.style.display = "none"; // Esconde o form ao abrir a câmera
+        resDiv.innerHTML = "<p>Buscando código...</p>";
 
         Quagga.init({
             inputStream: {
@@ -85,7 +99,7 @@
             },
             decoder: { readers: ["ean_reader"] }
         }, function(err) {
-            if (err) { alert("Erro ao abrir câmera: " + err); return; }
+            if (err) { alert("Erro na câmera: " + err); return; }
             Quagga.start();
         });
 
@@ -100,40 +114,52 @@
     function processarLeitura(codigo) {
         const resDiv = document.getElementById('resultado');
         const form = document.getElementById('formCadastro');
+        
+        // Procura o código na nossa lista salva
         const produto = estoque.find(p => p.codigo === codigo);
 
         if (produto) {
+            // Se encontrou o produto, mostra os detalhes
+            form.style.display = "none";
             resDiv.innerHTML = `
                 <h3 style="margin:0">${produto.nome}</h3>
-                <small>Cód: ${codigo}</small>
+                <small>Código: ${codigo}</small>
                 <div class="preco-destaque">R$ ${parseFloat(produto.precoX).toFixed(2)}</div>
                 <p>Concorrência: R$ ${parseFloat(produto.precoC).toFixed(2)}</p>
-                <button class="btn btn-scan" onclick="ligarCamera()">Próxima Leitura</button>
+                <button class="btn btn-scan" onclick="ligarCamera()">Ler Outro</button>
             `;
         } else {
-            resDiv.innerHTML = `<p style="color:#e74c3c">Não cadastrado: <b>${codigo}</b></p>`;
+            // Se NÃO encontrou, mostra o erro e ABRE o formulário
+            resDiv.innerHTML = `<p style="color:#e74c3c">Produto <b>${codigo}</b> não cadastrado!</p>`;
             document.getElementById('cadCodigo').value = codigo;
             form.style.display = "block";
         }
     }
 
     function salvarNoBanco() {
-        const novoProd = {
-            codigo: document.getElementById('cadCodigo').value,
-            nome: document.getElementById('cadNome').value,
-            precoX: document.getElementById('cadPrecoX').value,
-            precoC: document.getElementById('cadPrecoC').value
-        };
+        const codigo = document.getElementById('cadCodigo').value;
+        const nome = document.getElementById('cadNome').value;
+        const precoX = document.getElementById('cadPrecoX').value;
+        const precoC = document.getElementById('cadPrecoC').value;
 
-        if(!novoProd.nome || !novoProd.precoX) {
-            alert("Preencha Nome e Preço!");
+        if(!nome || !precoX) {
+            alert("Por favor, preencha o nome e o preço do seu mercado!");
             return;
         }
 
-        estoque.push(novoProd);
+        // Adiciona na lista
+        estoque.push({ 
+            codigo: codigo, 
+            nome: nome, 
+            precoX: precoX, 
+            precoC: precoC || 0 
+        });
+
+        // Salva permanentemente no celular
         localStorage.setItem('meuEstoque', JSON.stringify(estoque));
-        alert("Salvo!");
-        processarLeitura(novoProd.codigo);
+        
+        alert("Produto cadastrado com sucesso!");
+        processarLeitura(codigo); // Volta para a tela de resultado
     }
 </script>
 
