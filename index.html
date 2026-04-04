@@ -3,70 +3,74 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Consultor de Preços Pro</title>
+    <title>Terminal de Consulta - Pro</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
     <style>
-        body { font-family: sans-serif; background-color: #121212; color: white; margin: 0; padding: 15px; display: flex; flex-direction: column; align-items: center; }
-        .btn { width: 100%; max-width: 300px; padding: 15px; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; margin-bottom: 10px; }
-        .btn-scan { background: #2ecc71; color: white; font-size: 18px; }
-        #camera { width: 100%; max-width: 400px; height: 250px; background: #000; border-radius: 15px; overflow: hidden; display: none; position: relative; border: 2px solid #2ecc71; margin-bottom: 15px; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #0a0a0a; color: white; margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; height: 100vh; overflow: hidden; }
+        
+        /* Área da Câmera (Fica sempre visível ou abre rápido) */
+        #camera { width: 100%; max-width: 500px; height: 300px; background: #000; border-radius: 20px; overflow: hidden; position: relative; border: 3px solid #2ecc71; margin-bottom: 20px; box-shadow: 0 0 20px rgba(46, 204, 113, 0.4); }
         #camera video { width: 100%; height: 100%; object-fit: cover; }
-        #camera::after { content: ""; position: absolute; top: 50%; left: 10%; width: 80%; height: 2px; background: red; box-shadow: 0 0 10px red; }
-        .card { background: #1e1e1e; padding: 20px; width: 100%; max-width: 350px; border-radius: 15px; border-bottom: 4px solid #2ecc71; box-sizing: border-box; text-align: center; margin-bottom: 15px; }
-        input { width: 100%; padding: 12px; margin: 8px 0; border-radius: 8px; border: 1px solid #333; background: #222; color: white; box-sizing: border-box; font-size: 16px; }
-        #listaProdutos { width: 100%; max-width: 350px; text-align: left; font-size: 14px; background: #252525; border-radius: 10px; padding: 15px; display:none; border: 1px solid #444; }
-        .item-lista { border-bottom: 1px solid #333; padding: 10px 0; display: flex; justify-content: space-between; align-items: center; }
-        .btn-del { background: #e74c3c; color: white; border: none; border-radius: 5px; padding: 5px 12px; }
+        #camera::after { content: ""; position: absolute; top: 50%; left: 5%; width: 90%; height: 2px; background: rgba(255, 0, 0, 0.7); box-shadow: 0 0 10px red; z-index: 10; }
+
+        /* Painel de Preço Gigante */
+        .card-preco { background: #1a1a1a; padding: 30px; width: 90%; max-width: 450px; border-radius: 20px; text-align: center; border-bottom: 8px solid #2ecc71; display: none; animation: slideIn 0.3s ease; }
+        @keyframes slideIn { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+        .nome-prod { font-size: 24px; color: #3498db; margin-bottom: 10px; text-transform: uppercase; }
+        .valor-prod { font-size: 64px; font-weight: bold; color: #2ecc71; margin: 0; }
+        .concorrente { font-size: 18px; color: #e74c3c; margin-top: 10px; }
+
+        .btn-main { background: #2ecc71; color: white; border: none; padding: 20px; width: 100%; max-width: 300px; border-radius: 15px; font-size: 20px; font-weight: bold; cursor: pointer; margin-bottom: 20px; }
+        
+        #formCadastro { background: #222; padding: 20px; border-radius: 20px; width: 90%; display: none; margin-top: 10px; }
+        input { width: 100%; padding: 15px; margin: 10px 0; border-radius: 10px; border: none; background: #333; color: white; font-size: 18px; box-sizing: border-box; }
+        
+        .footer-btns { display: flex; gap: 10px; width: 100%; max-width: 400px; margin-top: auto; padding-bottom: 20px; }
+        .btn-small { flex: 1; padding: 10px; background: #333; border: none; color: #ccc; border-radius: 8px; font-size: 12px; }
     </style>
 </head>
 <body>
 
-    <h2>🔎 Scanner de Preços</h2>
+    <h2 id="status">CONSULTE O PREÇO</h2>
     
-    <button class="btn btn-scan" onclick="ligarCamera()">ABRIR CÂMERA</button>
-
     <div id="camera"></div>
 
-    <div id="resultado" class="card">Aguardando leitura...</div>
-
-    <div id="formCadastro" class="card" style="display:none;">
-        <h3 style="margin:0; color:#3498db;">Cadastrar</h3>
-        <input type="text" id="cadCodigo" readonly style="background:#111; color:#888;">
-        <input type="text" id="cadNome" placeholder="Nome">
-        <input type="number" id="cadPrecoX" step="0.01" placeholder="Seu Preço R$">
-        <input type="number" id="cadPrecoC" step="0.01" placeholder="Concorrente R$">
-        <button class="btn" style="background:#3498db; color:white; width:100%" onclick="salvarNoBanco()">SALVAR</button>
+    <div id="displayPreco" class="card-preco">
+        <div id="resNome" class="nome-prod">PRODUTO</div>
+        <div id="resValor" class="valor-prod">R$ 0,00</div>
+        <div id="resConc" class="concorrente">Concorrente: R$ 0,00</div>
     </div>
 
-    <button class="btn" style="background:#222; width:100%; border:1px solid #444; color:white" onclick="toggleLista()">📋 VER ITENS SALVOS</button>
-    <div id="listaProdutos"></div>
+    <div id="formCadastro">
+        <h3 style="color:#3498db">CADASTRAR PRODUTO</h3>
+        <input type="text" id="cadCodigo" readonly>
+        <input type="text" id="cadNome" placeholder="NOME DO PRODUTO">
+        <input type="number" id="cadPrecoX" step="0.01" placeholder="PREÇO R$">
+        <button class="btn-main" onclick="salvarProduto()">SALVAR AGORA</button>
+    </div>
+
+    <div class="footer-btns">
+        <button class="btn-small" onclick="exportar()">BACKUP</button>
+        <button class="btn-small" onclick="toggleLista()">VER TUDO</button>
+        <button class="btn-small" onclick="location.reload()">REINICIAR</button>
+    </div>
 
 <script>
     let estoque = JSON.parse(localStorage.getItem('meuEstoque')) || [];
 
-    function ligarCamera() {
-        const camDiv = document.getElementById('camera');
-        camDiv.style.display = "block";
+    function iniciarTerminal() {
+        Quagga.stop();
+        document.getElementById('camera').style.display = "block";
+        document.getElementById('displayPreco').style.display = "none";
         document.getElementById('formCadastro').style.display = "none";
-        document.getElementById('resultado').innerHTML = "Iniciando...";
-
-        // RESET TOTAL DO LEITOR
-        try { Quagga.stop(); } catch(e) {}
+        document.getElementById('status').innerText = "PONHA O CÓDIGO NA LINHA VERMELHA";
 
         Quagga.init({
-            inputStream: { 
-                name: "Live", 
-                type: "LiveStream", 
-                target: camDiv, 
-                constraints: { facingMode: "environment" } 
-            },
+            inputStream: { name: "Live", type: "LiveStream", target: document.querySelector('#camera'), constraints: { facingMode: "environment" } },
             decoder: { readers: ["ean_reader", "code_128_reader"] }
         }, function(err) {
-            if (err) { 
-                alert("ERRO NA CÂMERA: " + err.name); 
-                console.log(err);
-                return; 
-            }
+            if (err) { alert("Erro na câmera!"); return; }
             Quagga.start();
         });
     }
@@ -74,59 +78,61 @@
     Quagga.onDetected(function(data) {
         const codigo = data.codeResult.code;
         Quagga.stop();
-        document.getElementById('camera').style.display = "none";
-        processarLeitura(codigo);
+        beudarSom(); // Som de bip
+        processarConsulta(codigo);
     });
 
-    function processarLeitura(codigo) {
-        const resDiv = document.getElementById('resultado');
-        const form = document.getElementById('formCadastro');
-        estoque = JSON.parse(localStorage.getItem('meuEstoque')) || [];
-        const p = estoque.find(x => x.codigo === codigo);
+    function processarConsulta(codigo) {
+        const produto = estoque.find(p => p.codigo === codigo);
+        const display = document.getElementById('displayPreco');
+        const camera = document.getElementById('camera');
 
-        if (p) {
-            resDiv.innerHTML = `<h2 style="color:#2ecc71">${p.nome}</h2><div style="font-size:30px">R$ ${parseFloat(p.precoX).toFixed(2)}</div><p>Concorrente: R$ ${p.precoC}</p><button class="btn btn-scan" onclick="ligarCamera()">LER OUTRO</button>`;
+        camera.style.display = "none";
+        
+        if (produto) {
+            document.getElementById('resNome').innerText = produto.nome;
+            document.getElementById('resValor').innerText = `R$ ${parseFloat(produto.precoX).toFixed(2)}`;
+            document.getElementById('resConc').innerText = `Concorrente: R$ ${produto.precoC || '0.00'}`;
+            display.style.display = "block";
+            document.getElementById('status').innerText = "PRODUTO ENCONTRADO!";
+
+            // A MÁGICA: Espera 5 segundos e volta para a câmera sozinho
+            setTimeout(() => { iniciarTerminal(); }, 5000);
+            
         } else {
-            resDiv.innerHTML = `<p style="color:#e74c3c">Não encontrado: ${codigo}</p>`;
+            document.getElementById('status').innerText = "NÃO CADASTRADO!";
             document.getElementById('cadCodigo').value = codigo;
-            form.style.display = "block";
+            document.getElementById('formCadastro').style.display = "block";
         }
     }
 
-    function salvarNoBanco() {
+    function salvarProduto() {
         const cod = document.getElementById('cadCodigo').value;
         const nome = document.getElementById('cadNome').value;
-        const pX = document.getElementById('cadPrecoX').value;
-        const pC = document.getElementById('cadPrecoC').value;
-        if(!nome || !pX) return alert("Preencha Nome e Preço!");
-        estoque.push({ codigo: cod, nome: nome, precoX: pX, precoC: pC || 0 });
+        const preco = document.getElementById('cadPrecoX').value;
+        if(!nome || !preco) return;
+        
+        estoque.push({ codigo: cod, nome: nome, precoX: preco, precoC: 0 });
         localStorage.setItem('meuEstoque', JSON.stringify(estoque));
-        alert("Salvo!");
-        processarLeitura(cod);
+        alert("Cadastrado!");
+        iniciarTerminal();
     }
 
-    function removerItem(codigo) {
-        if(confirm("Apagar item?")) {
-            estoque = estoque.filter(p => p.codigo !== codigo);
-            localStorage.setItem('meuEstoque', JSON.stringify(estoque));
-            atualizarLista();
+    // Função para dar um "bip" (opcional, usa o sintetizador de voz vazio para simular)
+    function beudarSom() {
+        if ('speechSynthesis' in window) {
+            const msg = new SpeechSynthesisUtterance("");
+            window.speechSynthesis.speak(msg);
         }
     }
 
-    function atualizarLista() {
-        const div = document.getElementById('listaProdutos');
-        if (estoque.length === 0) { div.innerHTML = "<p>Vazio</p>"; return; }
-        div.innerHTML = "<h4>Itens:</h4>";
-        estoque.forEach(p => {
-            div.innerHTML += `<div class="item-lista"><span>${p.nome}<br>R$ ${p.precoX}</span><button class="btn-del" onclick="removerItem('${p.codigo}')">X</button></div>`;
-        });
+    function exportar() {
+        const blob = new Blob([JSON.stringify(estoque)], {type: 'application/json'});
+        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = "precos.json"; a.click();
     }
 
-    function toggleLista() {
-        const div = document.getElementById('listaProdutos');
-        if(div.style.display === "none") { atualizarLista(); div.style.display = "block"; }
-        else { div.style.display = "none"; }
-    }
+    // Inicia assim que carregar
+    window.onload = iniciarTerminal;
 </script>
 </body>
 </html>
