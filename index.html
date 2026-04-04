@@ -7,61 +7,79 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
     <style>
         body { font-family: sans-serif; background-color: #121212; color: white; margin: 0; padding: 15px; display: flex; flex-direction: column; align-items: center; }
-        .btn { width: 100%; max-width: 300px; padding: 12px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; margin-bottom: 10px; }
-        .btn-scan { background: #2ecc71; color: white; font-size: 18px; }
+        .btn { width: 100%; max-width: 300px; padding: 15px; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; margin-bottom: 10px; transition: 0.2s; }
+        .btn-scan { background: #2ecc71; color: white; font-size: 18px; box-shadow: 0 4px 15px rgba(46, 204, 113, 0.3); }
         .btn-save { background: #3498db; color: white; }
-        .btn-util { background: #555; color: white; font-size: 12px; width: 48%; }
+        .btn-util { background: #444; color: white; font-size: 12px; width: 48%; }
+        
         #camera { width: 100%; max-width: 400px; height: 250px; background: #000; border-radius: 15px; overflow: hidden; display: none; position: relative; border: 2px solid #2ecc71; margin-bottom: 15px; }
         #camera video { width: 100%; height: 100%; object-fit: cover; }
-        #camera::after { content: ""; position: absolute; top: 50%; left: 10%; width: 80%; height: 2px; background: red; }
-        .card { background: #1e1e1e; padding: 20px; width: 100%; max-width: 350px; border-radius: 15px; border-bottom: 4px solid #2ecc71; box-sizing: border-box; text-align: center; margin-bottom: 10px; }
-        input { width: 100%; padding: 10px; margin: 5px 0; border-radius: 5px; border: 1px solid #333; background: #222; color: white; box-sizing: border-box; }
-        #listaProdutos { width: 100%; max-width: 350px; text-align: left; font-size: 14px; background: #1e1e1e; border-radius: 10px; padding: 10px; display:none; }
-        .item-lista { border-bottom: 1px solid #333; padding: 5px 0; display: flex; justify-content: space-between; }
+        #camera::after { content: ""; position: absolute; top: 50%; left: 10%; width: 80%; height: 2px; background: red; box-shadow: 0 0 10px red; }
+
+        .card { background: #1e1e1e; padding: 20px; width: 100%; max-width: 350px; border-radius: 15px; border-bottom: 4px solid #2ecc71; box-sizing: border-box; text-align: center; margin-bottom: 15px; }
+        input { width: 100%; padding: 12px; margin: 8px 0; border-radius: 8px; border: 1px solid #333; background: #222; color: white; box-sizing: border-box; font-size: 16px; }
+        
+        #listaProdutos { width: 100%; max-width: 350px; text-align: left; font-size: 14px; background: #1e1e1e; border-radius: 10px; padding: 15px; display:none; border: 1px solid #333; }
+        .item-lista { border-bottom: 1px solid #333; padding: 8px 0; display: flex; justify-content: space-between; align-items: center; }
+        .item-lista b { color: #2ecc71; }
     </style>
 </head>
 <body>
 
     <h2>🔎 Scanner de Preços</h2>
     
-    <button class="btn btn-scan" onclick="ligarCamera()">LER CÓDIGO</button>
+    <button class="btn btn-scan" onclick="ligarCamera()">LER CÓDIGO DE BARRAS</button>
 
     <div id="camera"></div>
 
     <div id="resultado" class="card">Aguardando leitura...</div>
 
     <div id="formCadastro" class="card" style="display:none;">
-        <h4 style="margin:0; color:#3498db;">Novo Produto</h4>
-        <input type="text" id="cadCodigo" readonly>
+        <h3 style="margin:0; color:#3498db;">Novo Produto</h3>
+        <input type="text" id="cadCodigo" readonly style="background:#111; color:#888;">
         <input type="text" id="cadNome" placeholder="Nome (Ex: Super Bonder)">
         <input type="number" id="cadPrecoX" step="0.01" placeholder="Seu Preço R$">
         <input type="number" id="cadPrecoC" step="0.01" placeholder="Concorrente R$">
         <button class="btn btn-save" onclick="salvarNoBanco()">SALVAR NO CELULAR</button>
     </div>
 
-    <div style="width: 100%; max-width: 350px; display: flex; justify-content: space-between;">
-        <button class="btn btn-util" onclick="exportarDados()">📥 EXPORTAR</button>
+    <div style="width: 100%; max-width: 350px; display: flex; justify-content: space-between; margin-bottom: 10px;">
+        <button class="btn btn-util" onclick="exportarDados()">📥 EXPORTAR (Backup)</button>
         <button class="btn btn-util" onclick="document.getElementById('inputImport').click()">📤 IMPORTAR</button>
         <input type="file" id="inputImport" style="display:none" onchange="importarDados(event)">
     </div>
 
-    <button class="btn btn-util" style="width:100%" onclick="toggleLista()">📋 VER TODOS OS ITENS</button>
+    <button class="btn btn-util" style="width:100%; background:#222;" onclick="toggleLista()">📋 VER TODOS OS ITENS SALVOS</button>
     <div id="listaProdutos"></div>
 
 <script>
-    // PEGA A LISTA DO CELULAR OU CRIA VAZIA
+    // Inicia a base de dados
     let estoque = JSON.parse(localStorage.getItem('meuEstoque')) || [];
 
     function ligarCamera() {
+        // Limpa a tela para uma nova leitura
+        document.getElementById('resultado').innerHTML = "Buscando foco...";
+        document.getElementById('formCadastro').style.display = "none";
+        document.getElementById('cadNome').value = "";
+        document.getElementById('cadPrecoX').value = "";
+        document.getElementById('cadPrecoC').value = "";
+
         const camDiv = document.getElementById('camera');
         camDiv.style.display = "block";
+
         Quagga.init({
-            inputStream: { name: "Live", type: "LiveStream", target: camDiv, constraints: { facingMode: "environment" } },
-            decoder: { readers: ["ean_reader"] }
+            inputStream: { 
+                name: "Live", 
+                type: "LiveStream", 
+                target: camDiv, 
+                constraints: { facingMode: "environment", focusMode: "continuous" } 
+            },
+            decoder: { readers: ["ean_reader", "ean_8_reader", "code_128_reader"] }
         }, function(err) {
-            if (err) { alert("Erro: " + err); return; }
+            if (err) { alert("Erro ao abrir câmera: " + err); return; }
             Quagga.start();
         });
+
         Quagga.onDetected(function(data) {
             const codigo = data.codeResult.code;
             Quagga.stop();
@@ -73,15 +91,23 @@
     function processarLeitura(codigo) {
         const resDiv = document.getElementById('resultado');
         const form = document.getElementById('formCadastro');
-        // RECARREGA A LISTA ANTES DE BUSCAR (Garante que pegou o que foi salvo por último)
+        
+        // Recarrega do storage para garantir que pegamos tudo
         estoque = JSON.parse(localStorage.getItem('meuEstoque')) || [];
+        
         const produto = estoque.find(p => p.codigo === codigo);
 
         if (produto) {
             form.style.display = "none";
-            resDiv.innerHTML = `<h3>${produto.nome}</h3><p>Cód: ${codigo}</p><h2 style="color:#2ecc71">R$ ${parseFloat(produto.precoX).toFixed(2)}</h2><p>Concorrente: R$ ${parseFloat(produto.precoC).toFixed(2)}</p>`;
+            resDiv.innerHTML = `
+                <h2 style="margin:0; color:#2ecc71;">${produto.nome}</h2>
+                <p style="margin:5px 0;">Cód: ${codigo}</p>
+                <div style="font-size:32px; font-weight:bold; margin:10px 0;">R$ ${parseFloat(produto.precoX).toFixed(2)}</div>
+                <p style="color:#aaa;">Concorrente: R$ ${parseFloat(produto.precoC).toFixed(2)}</p>
+                <button class="btn btn-scan" style="margin-top:10px;" onclick="ligarCamera()">LER PRÓXIMO</button>
+            `;
         } else {
-            resDiv.innerHTML = `<p style="color:#e74c3c">Não cadastrado: ${codigo}</p>`;
+            resDiv.innerHTML = `<p style="color:#e74c3c; font-weight:bold;">NÃO CADASTRADO: ${codigo}</p>`;
             document.getElementById('cadCodigo').value = codigo;
             form.style.display = "block";
         }
@@ -94,37 +120,52 @@
         const precoX = document.getElementById('cadPrecoX').value;
         const precoC = document.getElementById('cadPrecoC').value;
 
-        if(!nome || !precoX) { alert("Preencha tudo!"); return; }
+        if(!nome || !precoX) { alert("Preencha Nome e Preço!"); return; }
 
-        // ADICIONA NA LISTA
-        estoque.push({ codigo, nome, precoX, precoC: precoC || 0 });
-        // SALVA NO CELULAR
+        // Adiciona à lista atual
+        estoque.push({ 
+            codigo: codigo, 
+            nome: nome, 
+            precoX: precoX, 
+            precoC: precoC || 0 
+        });
+
+        // Salva a lista inteira de volta no celular
         localStorage.setItem('meuEstoque', JSON.stringify(estoque));
         
-        alert("Salvo!");
+        alert("Produto salvo!");
         document.getElementById('formCadastro').style.display = "none";
         processarLeitura(codigo);
     }
 
     function exportarDados() {
-        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(estoque));
-        const downloadAnchorNode = document.createElement('a');
-        downloadAnchorNode.setAttribute("href", dataStr);
-        downloadAnchorNode.setAttribute("download", "meus_precos.json");
-        document.body.appendChild(downloadAnchorNode);
-        downloadAnchorNode.click();
-        downloadAnchorNode.remove();
+        if(estoque.length === 0) { alert("Nada para exportar!"); return; }
+        const blob = new Blob([JSON.stringify(estoque, null, 2)], {type : 'application/json'});
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = "meus_precos_backup.json";
+        a.click();
     }
 
     function importarDados(event) {
         const reader = new FileReader();
         reader.onload = function(e) {
-            const importado = JSON.parse(e.target.result);
-            if (confirm("Deseja importar " + importado.length + " itens? Isso vai somar com os atuais.")) {
-                estoque = [...estoque, ...importado];
+            try {
+                const importado = JSON.parse(e.target.result);
+                // Mescla os dados sem duplicar códigos iguais
+                const novaLista = [...estoque];
+                importado.forEach(item => {
+                    if(!novaLista.find(x => x.codigo === item.codigo)) {
+                        novaLista.push(item);
+                    }
+                });
+                estoque = novaLista;
                 localStorage.setItem('meuEstoque', JSON.stringify(estoque));
                 atualizarListaVisual();
-                alert("Importado com sucesso!");
+                alert("Importado com sucesso! Total de itens: " + estoque.length);
+            } catch(err) {
+                alert("Erro ao ler arquivo!");
             }
         };
         reader.readAsText(event.target.files[0]);
@@ -132,9 +173,17 @@
 
     function atualizarListaVisual() {
         const listaDiv = document.getElementById('listaProdutos');
-        listaDiv.innerHTML = "<h4>Itens Cadastrados:</h4>";
+        if (estoque.length === 0) {
+            listaDiv.innerHTML = "<p>Nenhum item cadastrado.</p>";
+            return;
+        }
+        listaDiv.innerHTML = "<h4>📋 Itens na Memória:</h4>";
         estoque.forEach(p => {
-            listaDiv.innerHTML += `<div class="item-lista"><span>${p.nome}</span> <b>R$ ${p.precoX}</b></div>`;
+            listaDiv.innerHTML += `
+                <div class="item-lista">
+                    <span>${p.nome}</span> 
+                    <b>R$ ${parseFloat(p.precoX).toFixed(2)}</b>
+                </div>`;
         });
     }
 
