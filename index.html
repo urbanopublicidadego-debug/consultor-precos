@@ -3,106 +3,65 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Consultor de Preços Pro</title>
+    <title>Consultor de Preços Ultra</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
     <style>
-        body { 
-            font-family: sans-serif; background-color: #121212; color: white; 
-            margin: 0; padding: 15px; display: flex; flex-direction: column; align-items: center; 
-        }
-        h2 { color: #2ecc71; margin-bottom: 20px; }
-        
-        /* Área da Câmera */
-        #camera { 
-            width: 100%; max-width: 400px; height: 250px; 
-            background: #000; border-radius: 15px; overflow: hidden; 
-            display: none; position: relative; border: 2px solid #2ecc71;
-            margin-bottom: 20px;
-        }
+        body { font-family: sans-serif; background-color: #121212; color: white; margin: 0; padding: 15px; display: flex; flex-direction: column; align-items: center; }
+        .btn { width: 100%; max-width: 300px; padding: 12px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; margin-bottom: 10px; }
+        .btn-scan { background: #2ecc71; color: white; font-size: 18px; }
+        .btn-save { background: #3498db; color: white; }
+        .btn-util { background: #555; color: white; font-size: 12px; width: 48%; }
+        #camera { width: 100%; max-width: 400px; height: 250px; background: #000; border-radius: 15px; overflow: hidden; display: none; position: relative; border: 2px solid #2ecc71; margin-bottom: 15px; }
         #camera video { width: 100%; height: 100%; object-fit: cover; }
-        #camera::after { 
-            content: ""; position: absolute; top: 50%; left: 10%; 
-            width: 80%; height: 2px; background: red; box-shadow: 0 0 8px red; 
-        }
-
-        /* Botões */
-        .btn { 
-            width: 100%; max-width: 300px; padding: 15px; border: none; 
-            border-radius: 10px; font-weight: bold; font-size: 16px; cursor: pointer; 
-            margin-bottom: 15px; transition: 0.3s;
-        }
-        .btn-scan { background: #2ecc71; color: white; }
-        .btn-save { background: #3498db; color: white; margin-top: 10px; }
-
-        /* Inputs do Cadastro */
-        input { 
-            width: 100%; padding: 12px; margin: 8px 0; border-radius: 8px; 
-            border: 1px solid #333; background: #222; color: white; box-sizing: border-box;
-        }
-
-        /* Cards */
-        .card { 
-            background: #1e1e1e; padding: 20px; width: 100%; max-width: 350px; 
-            border-radius: 15px; border-bottom: 4px solid #2ecc71; box-sizing: border-box;
-            text-align: center;
-        }
-        #formCadastro { display: none; margin-top: 15px; text-align: left; }
-        .preco-destaque { color: #2ecc71; font-size: 28px; font-weight: bold; margin: 10px 0; }
+        #camera::after { content: ""; position: absolute; top: 50%; left: 10%; width: 80%; height: 2px; background: red; }
+        .card { background: #1e1e1e; padding: 20px; width: 100%; max-width: 350px; border-radius: 15px; border-bottom: 4px solid #2ecc71; box-sizing: border-box; text-align: center; margin-bottom: 10px; }
+        input { width: 100%; padding: 10px; margin: 5px 0; border-radius: 5px; border: 1px solid #333; background: #222; color: white; box-sizing: border-box; }
+        #listaProdutos { width: 100%; max-width: 350px; text-align: left; font-size: 14px; background: #1e1e1e; border-radius: 10px; padding: 10px; display:none; }
+        .item-lista { border-bottom: 1px solid #333; padding: 5px 0; display: flex; justify-content: space-between; }
     </style>
 </head>
 <body>
 
     <h2>🔎 Scanner de Preços</h2>
     
-    <button class="btn btn-scan" onclick="ligarCamera()">LER CÓDIGO DE BARRAS</button>
+    <button class="btn btn-scan" onclick="ligarCamera()">LER CÓDIGO</button>
 
     <div id="camera"></div>
 
-    <div id="resultado" class="card">
-        <p>Aguardando primeira leitura...</p>
-    </div>
+    <div id="resultado" class="card">Aguardando leitura...</div>
 
-    <div id="formCadastro" class="card">
-        <h4 style="margin-top:0; color:#3498db;">Cadastrar Novo Produto</h4>
-        <label>Código lido:</label>
-        <input type="text" id="cadCodigo" readonly style="color:#888;">
-        
-        <label>Nome do Produto:</label>
-        <input type="text" id="cadNome" placeholder="Ex: Óleo de Soja 900ml">
-        
-        <label>Seu Preço (R$):</label>
-        <input type="number" id="cadPrecoX" step="0.01" placeholder="0.00">
-        
-        <label>Preço Concorrente (R$):</label>
-        <input type="number" id="cadPrecoC" step="0.01" placeholder="0.00">
-        
+    <div id="formCadastro" class="card" style="display:none;">
+        <h4 style="margin:0; color:#3498db;">Novo Produto</h4>
+        <input type="text" id="cadCodigo" readonly>
+        <input type="text" id="cadNome" placeholder="Nome (Ex: Super Bonder)">
+        <input type="number" id="cadPrecoX" step="0.01" placeholder="Seu Preço R$">
+        <input type="number" id="cadPrecoC" step="0.01" placeholder="Concorrente R$">
         <button class="btn btn-save" onclick="salvarNoBanco()">SALVAR NO CELULAR</button>
     </div>
 
+    <div style="width: 100%; max-width: 350px; display: flex; justify-content: space-between;">
+        <button class="btn btn-util" onclick="exportarDados()">📥 EXPORTAR</button>
+        <button class="btn btn-util" onclick="document.getElementById('inputImport').click()">📤 IMPORTAR</button>
+        <input type="file" id="inputImport" style="display:none" onchange="importarDados(event)">
+    </div>
+
+    <button class="btn btn-util" style="width:100%" onclick="toggleLista()">📋 VER TODOS OS ITENS</button>
+    <div id="listaProdutos"></div>
+
 <script>
-    // Carrega os dados salvos ou inicia vazio
+    // PEGA A LISTA DO CELULAR OU CRIA VAZIA
     let estoque = JSON.parse(localStorage.getItem('meuEstoque')) || [];
 
     function ligarCamera() {
         const camDiv = document.getElementById('camera');
-        const resDiv = document.getElementById('resultado');
-        const form = document.getElementById('formCadastro');
-
         camDiv.style.display = "block";
-        form.style.display = "none"; // Esconde o form ao abrir a câmera
-        resDiv.innerHTML = "<p>Buscando código...</p>";
-
         Quagga.init({
-            inputStream: {
-                name: "Live", type: "LiveStream", target: camDiv,
-                constraints: { facingMode: "environment" }
-            },
+            inputStream: { name: "Live", type: "LiveStream", target: camDiv, constraints: { facingMode: "environment" } },
             decoder: { readers: ["ean_reader"] }
         }, function(err) {
-            if (err) { alert("Erro na câmera: " + err); return; }
+            if (err) { alert("Erro: " + err); return; }
             Quagga.start();
         });
-
         Quagga.onDetected(function(data) {
             const codigo = data.codeResult.code;
             Quagga.stop();
@@ -114,26 +73,19 @@
     function processarLeitura(codigo) {
         const resDiv = document.getElementById('resultado');
         const form = document.getElementById('formCadastro');
-        
-        // Procura o código na nossa lista salva
+        // RECARREGA A LISTA ANTES DE BUSCAR (Garante que pegou o que foi salvo por último)
+        estoque = JSON.parse(localStorage.getItem('meuEstoque')) || [];
         const produto = estoque.find(p => p.codigo === codigo);
 
         if (produto) {
-            // Se encontrou o produto, mostra os detalhes
             form.style.display = "none";
-            resDiv.innerHTML = `
-                <h3 style="margin:0">${produto.nome}</h3>
-                <small>Código: ${codigo}</small>
-                <div class="preco-destaque">R$ ${parseFloat(produto.precoX).toFixed(2)}</div>
-                <p>Concorrência: R$ ${parseFloat(produto.precoC).toFixed(2)}</p>
-                <button class="btn btn-scan" onclick="ligarCamera()">Ler Outro</button>
-            `;
+            resDiv.innerHTML = `<h3>${produto.nome}</h3><p>Cód: ${codigo}</p><h2 style="color:#2ecc71">R$ ${parseFloat(produto.precoX).toFixed(2)}</h2><p>Concorrente: R$ ${parseFloat(produto.precoC).toFixed(2)}</p>`;
         } else {
-            // Se NÃO encontrou, mostra o erro e ABRE o formulário
-            resDiv.innerHTML = `<p style="color:#e74c3c">Produto <b>${codigo}</b> não cadastrado!</p>`;
+            resDiv.innerHTML = `<p style="color:#e74c3c">Não cadastrado: ${codigo}</p>`;
             document.getElementById('cadCodigo').value = codigo;
             form.style.display = "block";
         }
+        atualizarListaVisual();
     }
 
     function salvarNoBanco() {
@@ -142,26 +94,55 @@
         const precoX = document.getElementById('cadPrecoX').value;
         const precoC = document.getElementById('cadPrecoC').value;
 
-        if(!nome || !precoX) {
-            alert("Por favor, preencha o nome e o preço do seu mercado!");
-            return;
-        }
+        if(!nome || !precoX) { alert("Preencha tudo!"); return; }
 
-        // Adiciona na lista
-        estoque.push({ 
-            codigo: codigo, 
-            nome: nome, 
-            precoX: precoX, 
-            precoC: precoC || 0 
-        });
-
-        // Salva permanentemente no celular
+        // ADICIONA NA LISTA
+        estoque.push({ codigo, nome, precoX, precoC: precoC || 0 });
+        // SALVA NO CELULAR
         localStorage.setItem('meuEstoque', JSON.stringify(estoque));
         
-        alert("Produto cadastrado com sucesso!");
-        processarLeitura(codigo); // Volta para a tela de resultado
+        alert("Salvo!");
+        document.getElementById('formCadastro').style.display = "none";
+        processarLeitura(codigo);
+    }
+
+    function exportarDados() {
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(estoque));
+        const downloadAnchorNode = document.createElement('a');
+        downloadAnchorNode.setAttribute("href", dataStr);
+        downloadAnchorNode.setAttribute("download", "meus_precos.json");
+        document.body.appendChild(downloadAnchorNode);
+        downloadAnchorNode.click();
+        downloadAnchorNode.remove();
+    }
+
+    function importarDados(event) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const importado = JSON.parse(e.target.result);
+            if (confirm("Deseja importar " + importado.length + " itens? Isso vai somar com os atuais.")) {
+                estoque = [...estoque, ...importado];
+                localStorage.setItem('meuEstoque', JSON.stringify(estoque));
+                atualizarListaVisual();
+                alert("Importado com sucesso!");
+            }
+        };
+        reader.readAsText(event.target.files[0]);
+    }
+
+    function atualizarListaVisual() {
+        const listaDiv = document.getElementById('listaProdutos');
+        listaDiv.innerHTML = "<h4>Itens Cadastrados:</h4>";
+        estoque.forEach(p => {
+            listaDiv.innerHTML += `<div class="item-lista"><span>${p.nome}</span> <b>R$ ${p.precoX}</b></div>`;
+        });
+    }
+
+    function toggleLista() {
+        const lista = document.getElementById('listaProdutos');
+        atualizarListaVisual();
+        lista.style.display = lista.style.display === "none" ? "block" : "none";
     }
 </script>
-
 </body>
 </html>
