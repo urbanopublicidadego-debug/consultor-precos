@@ -21,8 +21,7 @@
         
         #listaProdutos { width: 100%; max-width: 350px; text-align: left; font-size: 14px; background: #252525; border-radius: 10px; padding: 15px; display:none; border: 1px solid #444; margin-top: 10px; }
         .item-lista { border-bottom: 1px solid #333; padding: 10px 0; display: flex; justify-content: space-between; align-items: center; }
-        .item-lista:last-child { border: none; }
-        .btn-del { background: #e74c3c; color: white; border: none; border-radius: 5px; padding: 5px 10px; cursor: pointer; font-weight: bold; margin-left: 10px; }
+        .btn-del { background: #e74c3c; color: white; border: none; border-radius: 5px; padding: 5px 12px; cursor: pointer; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -51,28 +50,42 @@
     </div>
 
     <button class="btn btn-util" style="width:100%; background:#222; border: 1px solid #444;" onclick="toggleLista()">📋 VER TODOS OS ITENS</button>
-    
     <div id="listaProdutos"></div>
 
 <script>
     let estoque = JSON.parse(localStorage.getItem('meuEstoque')) || [];
 
     function ligarCamera() {
-        document.getElementById('resultado').innerHTML = "Buscando código...";
+        // Reset da interface
+        document.getElementById('resultado').innerHTML = "Iniciando câmera...";
         document.getElementById('formCadastro').style.display = "none";
         document.getElementById('listaProdutos').style.display = "none";
-        Quagga.stop();
+        
         const camDiv = document.getElementById('camera');
         camDiv.style.display = "block";
+
+        // Reinicia o Quagga do zero
+        Quagga.stop();
+        
         Quagga.init({
-            inputStream: { name: "Live", type: "LiveStream", target: camDiv, constraints: { facingMode: "environment" } },
-            decoder: { readers: ["ean_reader", "code_128_reader"] }
+            inputStream: { 
+                name: "Live", 
+                type: "LiveStream", 
+                target: camDiv, 
+                constraints: { facingMode: "environment" } 
+            },
+            decoder: { readers: ["ean_reader", "code_128_reader", "ean_8_reader"] }
         }, function(err) {
-            if (err) { alert("Erro: " + err); return; }
+            if (err) { 
+                alert("Erro ao abrir câmera. Verifique as permissões de HTTPS."); 
+                console.error(err);
+                return; 
+            }
             Quagga.start();
         });
     }
 
+    // Evento de detecção de código
     Quagga.onDetected(function(data) {
         const codigo = data.codeResult.code;
         Quagga.stop();
@@ -84,16 +97,17 @@
         const resDiv = document.getElementById('resultado');
         const form = document.getElementById('formCadastro');
         estoque = JSON.parse(localStorage.getItem('meuEstoque')) || [];
+        
         const produto = estoque.find(p => p.codigo === codigo);
 
         if (produto) {
             form.style.display = "none";
             resDiv.innerHTML = `
-                <h2 style="color:#2ecc71; margin-bottom:5px;">${produto.nome}</h2>
+                <h2 style="color:#2ecc71;">${produto.nome}</h2>
                 <div style="font-size:30px; font-weight:bold;">R$ ${parseFloat(produto.precoX).toFixed(2)}</div>
-                <p style="color:#aaa; margin:5px;">Concorrente: R$ ${parseFloat(produto.precoC).toFixed(2)}</p>
+                <p style="color:#aaa;">Concorrente: R$ ${parseFloat(produto.precoC).toFixed(2)}</p>
                 <small>Cód: ${codigo}</small><br>
-                <button class="btn btn-scan" style="margin-top:15px; padding:10px;" onclick="ligarCamera()">LER PRÓXIMO</button>
+                <button class="btn btn-scan" style="margin-top:15px; font-size:14px; padding:10px;" onclick="ligarCamera()">LER PRÓXIMO</button>
             `;
         } else {
             resDiv.innerHTML = `<p style="color:#e74c3c; font-weight:bold;">Produto ${codigo} não encontrado!</p>`;
@@ -110,41 +124,36 @@
         const nome = document.getElementById('cadNome').value;
         const precoX = document.getElementById('cadPrecoX').value;
         const precoC = document.getElementById('cadPrecoC').value;
+
         if(!nome || !precoX) { alert("Preencha Nome e Preço!"); return; }
+
         estoque.push({ codigo, nome, precoX, precoC: precoC || 0 });
         localStorage.setItem('meuEstoque', JSON.stringify(estoque));
-        alert("Salvo!");
+        
+        alert("Produto salvo!");
         document.getElementById('formCadastro').style.display = "none";
         processarLeitura(codigo);
     }
 
-    // NOVA FUNÇÃO: DELETAR ITEM ÚNICO
     function removerItem(codigo) {
-        if(confirm("Deseja apagar este item permanentemente?")) {
+        if(confirm("Deseja apagar este item?")) {
             estoque = estoque.filter(p => p.codigo !== codigo);
             localStorage.setItem('meuEstoque', JSON.stringify(estoque));
-            atualizarListaVisual(); // Recarrega a lista na tela
-            document.getElementById('resultado').innerHTML = "Item removido.";
+            atualizarListaVisual();
         }
     }
 
     function atualizarListaVisual() {
         const listaDiv = document.getElementById('listaProdutos');
-        estoque = JSON.parse(localStorage.getItem('meuEstoque')) || [];
-        
         if (estoque.length === 0) {
             listaDiv.innerHTML = "<p>Nenhum item cadastrado.</p>";
             return;
         }
-
         listaDiv.innerHTML = "<h4>📋 Itens na Memória:</h4>";
         estoque.forEach(p => {
             listaDiv.innerHTML += `
                 <div class="item-lista">
-                    <div>
-                        <b>${p.nome}</b><br>
-                        <small>R$ ${parseFloat(p.precoX).toFixed(2)}</small>
-                    </div>
+                    <span><b>${p.nome}</b><br>R$ ${parseFloat(p.precoX).toFixed(2)}</span>
                     <button class="btn-del" onclick="removerItem('${p.codigo}')">X</button>
                 </div>`;
         });
@@ -161,10 +170,10 @@
     }
 
     function exportarDados() {
-        if(estoque.length === 0) { alert("Nada para exportar."); return; }
+        if(estoque.length === 0) return alert("Vazio!");
         const blob = new Blob([JSON.stringify(estoque)], {type: 'application/json'});
         const url = URL.createObjectURL(blob);
-        const a = document.createElement('a'); a.href = url; a.download = "meus_precos.json"; a.click();
+        const a = document.createElement('a'); a.href = url; a.download = "precos.json"; a.click();
     }
 
     function importarDados(event) {
@@ -172,7 +181,6 @@
         reader.onload = function(e) {
             estoque = JSON.parse(e.target.result);
             localStorage.setItem('meuEstoque', JSON.stringify(estoque));
-            alert("Importado!");
             location.reload();
         };
         reader.readAsText(event.target.files[0]);
