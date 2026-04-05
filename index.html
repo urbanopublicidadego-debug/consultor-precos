@@ -3,25 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Scanner Pro - Estável</title>
+    <title>Consultor de Preços Pro</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
     <style>
-        body { font-family: sans-serif; background-color: #121212; color: white; margin: 0; padding: 15px; display: flex; flex-direction: column; align-items: center; }
-        .btn { width: 100%; max-width: 300px; padding: 15px; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; margin-bottom: 10px; text-align: center; }
-        .btn-scan { background: #2ecc71; color: white; font-size: 18px; }
-        .btn-save { background: #3498db; color: white; }
-        .btn-util { background: #444; color: white; font-size: 13px; margin: 5px; border-radius: 5px; flex: 1; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #121212; color: white; margin: 0; padding: 15px; display: flex; flex-direction: column; align-items: center; }
+        h2 { color: #2ecc71; margin-bottom: 20px; }
         
-        #camera { width: 100%; max-width: 400px; height: 250px; background: #000; border-radius: 15px; overflow: hidden; display: none; position: relative; border: 2px solid #2ecc71; margin-bottom: 15px; }
-        #camera video { width: 100%; height: 100%; object-fit: cover; }
-        #camera::after { content: ""; position: absolute; top: 50%; left: 5%; width: 90%; height: 2px; background: red; box-shadow: 0 0 10px red; }
+        /* Botões */
+        .btn { width: 100%; max-width: 350px; padding: 15px; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; margin-bottom: 10px; transition: 0.3s; text-align: center; }
+        .btn-scan { background: #2ecc71; color: white; font-size: 18px; box-shadow: 0 4px 15px rgba(46, 204, 113, 0.3); }
+        .btn-save { background: #3498db; color: white; margin-top: 10px; }
+        .btn-util { background: #333; color: #ccc; font-size: 13px; flex: 1; margin: 5px; }
+        .btn-danger { background: #c0392b; color: white; width: 100%; max-width: 350px; margin-top: 30px; }
 
-        .card { background: #1e1e1e; padding: 20px; width: 100%; max-width: 350px; border-radius: 15px; border-bottom: 4px solid #2ecc71; box-sizing: border-box; text-align: center; margin-bottom: 15px; }
-        input { width: 100%; padding: 12px; margin: 8px 0; border-radius: 8px; border: 1px solid #333; background: #222; color: white; box-sizing: border-box; font-size: 16px; }
+        /* Câmera */
+        #camera { width: 100%; max-width: 400px; height: 250px; background: #000; border-radius: 20px; overflow: hidden; display: none; position: relative; border: 3px solid #2ecc71; margin-bottom: 20px; }
+        #camera video { width: 100%; height: 100%; object-fit: cover; }
+        #camera::after { content: ""; position: absolute; top: 50%; left: 5%; width: 90%; height: 2px; background: red; box-shadow: 0 0 10px red; z-index: 10; }
+
+        /* Cards de Informação */
+        .card { background: #1e1e1e; padding: 20px; width: 100%; max-width: 350px; border-radius: 15px; border-bottom: 5px solid #2ecc71; box-sizing: border-box; text-align: center; margin-bottom: 20px; box-shadow: 0 10px 20px rgba(0,0,0,0.5); }
+        input { width: 100%; padding: 12px; margin: 10px 0; border-radius: 8px; border: 1px solid #444; background: #2a2a2a; color: white; box-sizing: border-box; font-size: 16px; }
         
-        #listaProdutos { width: 100%; max-width: 350px; background: #252525; border-radius: 10px; padding: 15px; display:none; border: 1px solid #444; margin-top: 10px; box-sizing: border-box; }
-        .item-lista { border-bottom: 1px solid #333; padding: 10px 0; display: flex; justify-content: space-between; align-items: center; }
-        .btn-del { background: #e74c3c; color: white; border: none; border-radius: 5px; padding: 5px 10px; cursor: pointer; }
+        /* Lista */
+        #listaProdutos { width: 100%; max-width: 350px; background: #1a1a1a; border-radius: 12px; padding: 15px; display:none; border: 1px solid #333; box-sizing: border-box; }
+        .item-lista { border-bottom: 1px solid #333; padding: 12px 0; display: flex; justify-content: space-between; align-items: center; }
+        .btn-del { background: #e74c3c; color: white; border: none; border-radius: 6px; padding: 8px; cursor: pointer; font-size: 12px; }
     </style>
 </head>
 <body>
@@ -32,38 +39,48 @@
 
     <div id="camera"></div>
 
-    <div id="resultado" class="card">Aguardando leitura...</div>
+    <div id="resultado" class="card">Aguardando bip...</div>
 
     <div id="formCadastro" class="card" style="display:none;">
-        <h3 style="margin:0; color:#3498db;">Cadastrar Produto</h3>
-        <input type="text" id="cadCodigo" readonly style="background:#111; color:#888;">
-        <input type="text" id="cadNome" placeholder="Nome do Produto">
-        <input type="number" id="cadPreco" step="0.01" placeholder="Preço R$">
-        <button class="btn btn-save" onclick="salvar()">SALVAR AGORA</button>
+        <h3 style="margin:0; color:#3498db;">Cadastrar Novo Item</h3>
+        <input type="text" id="cadCodigo" readonly style="background:#111; color:#888; border:none;">
+        <input type="text" id="cadNome" placeholder="Nome do Produto (ex: Arroz 5kg)">
+        <input type="number" id="cadPreco" step="0.01" placeholder="Preço R$ (ex: 25.90)">
+        <button class="btn btn-save" onclick="salvar()">SALVAR NO DISPOSITIVO</button>
     </div>
 
-    <div style="width: 100%; max-width: 350px; display: flex; justify-content: space-between;">
+    <div style="width: 100%; max-width: 350px; display: flex;">
         <button class="btn btn-util" onclick="exportar()">📥 EXPORTAR</button>
-        <button class="btn btn-util" onclick="toggleLista()">📋 VER LISTA / EXCLUIR</button>
+        <button class="btn btn-util" onclick="toggleLista()">📋 MINHA LISTA</button>
     </div>
 
     <div id="listaProdutos"></div>
 
-    <button class="btn btn-util" style="background:#c0392b; width: 100%; max-width: 350px; margin-top: 20px;" onclick="limparTudo()">🚨 LIMPAR TODA A MEMÓRIA</button>
+    <button class="btn btn-danger" onclick="limparTudo()">🚨 LIMPAR TODA A MEMÓRIA</button>
 
 <script>
+    // Inicialização do Banco de Dados Local
+    function obterEstoque() {
+        return JSON.parse(localStorage.getItem('meuEstoque')) || [];
+    }
+
     function ligarCamera() {
         document.getElementById('camera').style.display = "block";
         document.getElementById('btnIniciar').style.display = "none";
         document.getElementById('formCadastro').style.display = "none";
         document.getElementById('listaProdutos').style.display = "none";
-        document.getElementById('resultado').innerHTML = "Buscando...";
+        document.getElementById('resultado').innerHTML = "Buscando barras...";
 
         Quagga.init({
-            inputStream: { name: "Live", type: "LiveStream", target: document.getElementById('camera'), constraints: { facingMode: "environment" } },
+            inputStream: { 
+                name: "Live", 
+                type: "LiveStream", 
+                target: document.getElementById('camera'),
+                constraints: { facingMode: "environment" } 
+            },
             decoder: { readers: ["ean_reader", "ean_8_reader", "code_128_reader"] }
         }, function(err) {
-            if (err) { alert("Câmera não encontrada!"); return; }
+            if (err) { alert("Erro ao abrir câmera. Verifique permissões."); return; }
             Quagga.start();
         });
 
@@ -71,32 +88,37 @@
     }
 
     function ouvirCodigo(data) {
-        const codigo = data.codeResult.code;
+        const codigoBruto = data.codeResult.code;
+        
+        // PARA TUDO IMEDIATAMENTE PARA EVITAR LOOP
         Quagga.stop();
         Quagga.offDetected(ouvirCodigo);
         
         document.getElementById('camera').style.display = "none";
         document.getElementById('btnIniciar').style.display = "block";
         
-        processar(codigo);
+        processar(codigoBruto);
     }
 
     function processar(codigo) {
-        // ESSENCIAL: Puxa do banco de dados toda vez que ler
-        const estoque = JSON.parse(localStorage.getItem('meuEstoque')) || [];
-        const produto = estoque.find(x => x.codigo === codigo);
+        const estoque = obterEstoque();
+        // Limpeza absoluta do código para comparação
+        const codLimpo = codigo.toString().trim();
+        
+        // Busca inteligente (converte ambos para string e tira espaços)
+        const produto = estoque.find(p => p.codigo.toString().trim() === codLimpo);
 
         if (produto) {
             document.getElementById('formCadastro').style.display = "none";
             document.getElementById('resultado').innerHTML = `
-                <h2 style="color:#2ecc71; margin:0;">${produto.nome}</h2>
-                <div style="font-size:35px; font-weight:bold;">R$ ${parseFloat(produto.preco).toFixed(2)}</div>
-                <small>Cód: ${codigo}</small><br>
-                <button class="btn btn-scan" style="margin-top:15px; padding:10px;" onclick="ligarCamera()">LER PRÓXIMO</button>
+                <h2 style="color:#2ecc71; margin:0; text-transform:uppercase;">${produto.nome}</h2>
+                <div style="font-size:42px; font-weight:bold; margin:10px 0;">R$ ${parseFloat(produto.preco).toFixed(2)}</div>
+                <small style="color:#666;">SKU: ${codLimpo}</small><br>
+                <button class="btn btn-scan" style="margin-top:15px; background:#34495e;" onclick="ligarCamera()">PRÓXIMO ITEM</button>
             `;
         } else {
-            document.getElementById('resultado').innerHTML = "Produto não encontrado!";
-            document.getElementById('cadCodigo').value = codigo;
+            document.getElementById('resultado').innerHTML = "<b style='color:#e74c3c;'>CÓDIGO NÃO RECONHECIDO</b>";
+            document.getElementById('cadCodigo').value = codLimpo;
             document.getElementById('cadNome').value = "";
             document.getElementById('cadPreco').value = "";
             document.getElementById('formCadastro').style.display = "block";
@@ -104,32 +126,48 @@
     }
 
     function salvar() {
-        const cod = document.getElementById('cadCodigo').value;
-        const nome = document.getElementById('cadNome').value;
+        const cod = document.getElementById('cadCodigo').value.toString().trim();
+        const nome = document.getElementById('cadNome').value.trim();
         const preco = document.getElementById('cadPreco').value;
-        if(!nome || !preco) return alert("Preencha Nome e Preço!");
 
-        let estoque = JSON.parse(localStorage.getItem('meuEstoque')) || [];
-        estoque.push({ codigo: cod, nome, preco });
+        if(!nome || !preco) {
+            alert("Ei parça, preencha o nome e o preço corretamente!");
+            return;
+        }
+
+        let estoque = obterEstoque();
+        
+        // Remove duplicatas do mesmo código antes de salvar o novo
+        estoque = estoque.filter(item => item.codigo.toString().trim() !== cod);
+
+        estoque.push({ 
+            codigo: cod, 
+            nome: nome, 
+            preco: preco 
+        });
+
         localStorage.setItem('meuEstoque', JSON.stringify(estoque));
         
-        alert("Produto cadastrado!");
+        alert("Produto gravado com sucesso!");
         document.getElementById('formCadastro').style.display = "none";
-        processar(cod); // Re-processa para mostrar o preço na hora
+        
+        // Chama o processar de novo para mostrar o preço que acabou de salvar
+        processar(cod);
     }
 
     function toggleLista() {
         const listaDiv = document.getElementById('listaProdutos');
         if (listaDiv.style.display === "none" || listaDiv.style.display === "") {
-            const estoque = JSON.parse(localStorage.getItem('meuEstoque')) || [];
-            if(estoque.length === 0) { listaDiv.innerHTML = "<p>Nenhum item salvo.</p>"; }
-            else {
-                listaDiv.innerHTML = "<h4>Itens Salvos:</h4>";
+            const estoque = obterEstoque();
+            if(estoque.length === 0) {
+                listaDiv.innerHTML = "<p style='text-align:center; color:#666;'>Lista vazia.</p>";
+            } else {
+                listaDiv.innerHTML = "<h4 style='margin-top:0;'>Meus Itens:</h4>";
                 estoque.forEach((p, index) => {
                     listaDiv.innerHTML += `
                         <div class="item-lista">
-                            <span>${p.nome}<br><b>R$ ${p.preco}</b></span>
-                            <button class="btn-del" onclick="removerItem(${index})">X</button>
+                            <span>${p.nome.toUpperCase()}<br><b>R$ ${parseFloat(p.preco).toFixed(2)}</b></span>
+                            <button class="btn-del" onclick="removerItem(${index})">APAGAR</button>
                         </div>`;
                 });
             }
@@ -140,22 +178,28 @@
     }
 
     function removerItem(index) {
-        if(confirm("Excluir este item?")) {
-            let estoque = JSON.parse(localStorage.getItem('meuEstoque')) || [];
+        if(confirm("Deseja mesmo apagar este item?")) {
+            let estoque = obterEstoque();
             estoque.splice(index, 1);
             localStorage.setItem('meuEstoque', JSON.stringify(estoque));
-            toggleLista(); toggleLista(); // Recarrega a lista
+            toggleLista(); toggleLista(); // Recarrega visualmente
         }
     }
 
     function exportar() {
-        const estoque = JSON.parse(localStorage.getItem('meuEstoque')) || [];
-        const blob = new Blob([JSON.stringify(estoque)], {type: 'application/json'});
-        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = "precos.json"; a.click();
+        const estoque = obterEstoque();
+        if(estoque.length === 0) return alert("Nada para exportar.");
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(estoque));
+        const downloadAnchorNode = document.createElement('a');
+        downloadAnchorNode.setAttribute("href", dataStr);
+        downloadAnchorNode.setAttribute("download", "meu_estoque_precos.json");
+        document.body.appendChild(downloadAnchorNode);
+        downloadAnchorNode.click();
+        downloadAnchorNode.remove();
     }
 
     function limparTudo() {
-        if(confirm("🚨 APAGAR TUDO? Isso não pode ser desfeito!")) {
+        if(confirm("🚨 PERIGO: Isso vai apagar TODOS os seus produtos cadastrados. Confirma?")) {
             localStorage.removeItem('meuEstoque');
             location.reload();
         }
