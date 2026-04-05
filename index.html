@@ -3,101 +3,105 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Scanner Diagnóstico</title>
+    <title>Scanner Profissional v8</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
     <style>
-        body { font-family: sans-serif; background: #121212; color: white; padding: 15px; text-align: center; }
-        .btn { width: 100%; max-width: 350px; padding: 15px; border: none; border-radius: 10px; font-weight: bold; margin-bottom: 10px; cursor: pointer; }
-        #camera { width: 100%; max-width: 400px; height: 250px; background: #000; border-radius: 15px; display: none; border: 2px solid #2ecc71; margin: 0 auto 15px; }
-        .card { background: #1e1e1e; padding: 20px; border-radius: 15px; border-bottom: 4px solid #2ecc71; margin-bottom: 15px; }
-        input { width: 100%; padding: 12px; margin: 8px 0; border-radius: 8px; background: #222; color: white; border: 1px solid #444; }
+        body { font-family: sans-serif; background: #121212; color: white; padding: 15px; text-align: center; margin: 0; }
+        .btn { width: 100%; max-width: 350px; padding: 18px; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; margin-bottom: 10px; font-size: 16px; }
+        #camera { width: 100%; max-width: 400px; height: 250px; background: #000; border-radius: 20px; display: none; position: relative; border: 3px solid #2ecc71; margin: 0 auto 15px; overflow: hidden; }
+        #camera video { width: 100%; height: 100%; object-fit: cover; }
+        #camera::after { content: ""; position: absolute; top: 50%; left: 5%; width: 90%; height: 2px; background: red; box-shadow: 0 0 10px red; }
+        .card { background: #1e1e1e; padding: 25px; border-radius: 20px; border-bottom: 5px solid #2ecc71; margin-bottom: 15px; box-shadow: 0 10px 20px rgba(0,0,0,0.4); }
+        input { width: 100%; padding: 15px; margin: 10px 0; border-radius: 10px; background: #222; color: white; border: 1px solid #444; font-size: 18px; box-sizing: border-box; }
     </style>
 </head>
 <body>
 
-    <h2>🔎 Teste de Memória</h2>
+    <h2 style="color:#2ecc71;">🔎 Consultor de Preços</h2>
     
-    <button class="btn" style="background:#2ecc71; color:white;" onclick="ligarCamera()">1. LER CÓDIGO</button>
+    <button class="btn" style="background:#2ecc71; color:white;" id="btnAtivar" onclick="iniciar()">ABRIR SCANNER</button>
 
     <div id="camera"></div>
 
-    <div id="resultado" class="card">Aguardando...</div>
+    <div id="resultado" class="card">Aproxime o código de barras...</div>
 
-    <div id="formCadastro" class="card" style="display:none;">
-        <h3>Cadastrar Item</h3>
-        <input type="text" id="cadCodigo" readonly>
-        <input type="text" id="cadNome" placeholder="Nome">
-        <input type="number" id="cadPreco" step="0.01" placeholder="Preço">
-        <button class="btn" style="background:#3498db; color:white;" onclick="salvar()">2. SALVAR NO CELULAR</button>
+    <div id="formCad" class="card" style="display:none; border-color:#3498db;">
+        <h3 style="color:#3498db;">Novo Produto</h3>
+        <input type="text" id="codFinal" readonly style="background:#000; color:#0f0; border:none; text-align:center; font-family:monospace;">
+        <input type="text" id="nomeProd" placeholder="Nome do Produto">
+        <input type="number" id="precoProd" step="0.01" placeholder="Preço R$">
+        <button class="btn" style="background:#3498db; color:white;" onclick="salvar()">SALVAR PRODUTO</button>
     </div>
 
-    <hr style="border: 0; border-top: 1px solid #333; margin: 20px 0;">
-
-    <button class="btn" style="background:#f1c40f; color:black;" onclick="verBanco()">🔍 MOSTRAR O QUE TEM SALVO</button>
-    <button class="btn" style="background:#c0392b; color:white;" onclick="localStorage.clear(); alert('Memória Limpa!'); location.reload();">🚨 ZERAR TUDO</button>
+    <button class="btn" style="background:#444; color:#ccc; margin-top:30px; padding:10px;" onclick="ver()">LISTAR MEMÓRIA</button>
+    <button class="btn" style="background:#c0392b; color:white; padding:10px;" onclick="localStorage.clear(); location.reload();">ZERAR TUDO</button>
 
 <script>
-    function ligarCamera() {
+    function iniciar() {
         document.getElementById('camera').style.display = "block";
+        document.getElementById('btnAtivar').style.display = "none";
+        document.getElementById('formCad').style.display = "none";
+        
         Quagga.init({
-            inputStream: { name: "Live", type: "LiveStream", target: document.getElementById('camera'), constraints: { facingMode: "environment" } },
-            decoder: { readers: ["ean_reader", "ean_8_reader", "code_128_reader"] }
+            inputStream: { name: "Live", type: "LiveStream", target: document.querySelector("#camera"), constraints: { facingMode: "environment" } },
+            // FORÇANDO APENAS LEITORES DE MERCADO (EAN)
+            decoder: { readers: ["ean_reader", "ean_8_reader"] },
+            locate: true
         }, function(err) {
-            if (err) return alert("Erro câmera: " + err);
+            if (err) return alert("Erro: " + err);
             Quagga.start();
         });
+
         Quagga.onDetected(function(data) {
-            const cod = data.codeResult.code;
-            Quagga.stop();
-            document.getElementById('camera').style.display = "none";
-            processar(cod);
+            const code = data.codeResult.code;
+            // Só aceita se o código tiver 8 ou 13 dígitos (padrão EAN)
+            if (code.length >= 8) {
+                Quagga.stop();
+                document.getElementById('camera').style.display = "none";
+                document.getElementById('btnAtivar').style.display = "block";
+                buscar(code);
+            }
         });
     }
 
-    function processar(cod) {
-        const estoque = JSON.parse(localStorage.getItem('meuEstoque')) || [];
-        // Limpeza absoluta: remove tudo que não for número
-        const codLimpo = cod.toString().replace(/\D/g, "");
-        
-        const p = estoque.find(x => x.codigo.toString().replace(/\D/g, "") === codLimpo);
+    function buscar(cod) {
+        const db = JSON.parse(localStorage.getItem('meuEstoque')) || [];
+        // Limpeza absoluta para comparar
+        const limpo = cod.toString().trim();
+        const achou = db.find(p => p.codigo.toString().trim() === limpo);
 
-        if (p) {
-            document.getElementById('formCadastro').style.display = "none";
+        if (achou) {
             document.getElementById('resultado').innerHTML = `
-                <h2 style="color:#2ecc71;">${p.nome}</h2>
-                <h1 style="margin:0;">R$ ${parseFloat(p.preco).toFixed(2)}</h1>
-                <small>Código: ${codLimpo}</small>
+                <h1 style="color:#2ecc71; margin:0; font-size:40px;">${achou.nome.toUpperCase()}</h1>
+                <div style="font-size:50px; font-weight:bold; margin:10px 0;">R$ ${parseFloat(achou.preco).toFixed(2)}</div>
+                <small style="color:#888;">CÓD: ${limpo}</small>
             `;
         } else {
-            document.getElementById('resultado').innerHTML = "CÓDIGO NOVO";
-            document.getElementById('cadCodigo').value = codLimpo;
-            document.getElementById('formCadastro').style.display = "block";
+            document.getElementById('resultado').innerHTML = "<b style='color:#e74c3c;'>NÃO CADASTRADO</b>";
+            document.getElementById('codFinal').value = limpo;
+            document.getElementById('formCad').style.display = "block";
         }
     }
 
     function salvar() {
-        const cod = document.getElementById('cadCodigo').value;
-        const nome = document.getElementById('cadNome').value;
-        const preco = document.getElementById('cadPreco').value;
+        const cod = document.getElementById('codFinal').value;
+        const nome = document.getElementById('nomeProd').value;
+        const preco = document.getElementById('precoProd').value;
         
-        if(!nome || !preco) return alert("Preencha os campos!");
+        if(!nome || !preco) return alert("Preencha nome e preço!");
 
-        let estoque = JSON.parse(localStorage.getItem('meuEstoque')) || [];
-        estoque.push({ codigo: cod, nome: nome, preco: preco });
-        localStorage.setItem('meuEstoque', JSON.stringify(estoque));
+        let db = JSON.parse(localStorage.getItem('meuEstoque')) || [];
+        db.push({ codigo: cod, nome: nome, preco: preco });
+        localStorage.setItem('meuEstoque', JSON.stringify(db));
         
-        alert("ITEM SALVO! Agora tente ler ele novamente.");
-        document.getElementById('formCadastro').style.display = "none";
-        processar(cod);
+        alert("Gravado!");
+        document.getElementById('formCad').style.display = "none";
+        buscar(cod);
     }
 
-    function verBanco() {
-        const estoque = localStorage.getItem('meuEstoque');
-        if(!estoque || estoque === "[]") {
-            alert("A memória está vazia!");
-        } else {
-            alert("ITENS NA MEMÓRIA:\n" + estoque);
-        }
+    function ver() {
+        const db = localStorage.getItem('meuEstoque');
+        alert(db ? db : "Vazio");
     }
 </script>
 </body>
