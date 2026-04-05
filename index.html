@@ -3,47 +3,52 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Consultor v5.0 - Oficial</title>
+    <title>Consultor v6.0 - Blindado</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
     <style>
-        body { font-family: sans-serif; background: #121212; color: white; padding: 15px; display: flex; flex-direction: column; align-items: center; }
-        .btn { width: 100%; max-width: 350px; padding: 15px; border: none; border-radius: 10px; font-weight: bold; margin-bottom: 10px; cursor: pointer; }
-        #camera { width: 100%; max-width: 400px; height: 250px; background: #000; border-radius: 15px; display: none; position: relative; border: 2px solid #2ecc71; margin-bottom: 15px; }
+        body { font-family: sans-serif; background: #121212; color: white; padding: 15px; display: flex; flex-direction: column; align-items: center; margin: 0; }
+        .btn { width: 100%; max-width: 350px; padding: 15px; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; margin-bottom: 10px; }
+        #camera { width: 100%; max-width: 400px; height: 250px; background: #000; border-radius: 20px; display: none; position: relative; border: 3px solid #2ecc71; margin-bottom: 15px; overflow: hidden; }
         #camera video { width: 100%; height: 100%; object-fit: cover; }
         #camera::after { content: ""; position: absolute; top: 50%; left: 5%; width: 90%; height: 2px; background: red; box-shadow: 0 0 10px red; }
-        .card { background: #1e1e1e; padding: 20px; width: 100%; max-width: 350px; border-radius: 15px; text-align: center; border-bottom: 4px solid #2ecc71; box-sizing: border-box; }
-        input { width: 100%; padding: 12px; margin: 8px 0; border-radius: 8px; background: #222; color: white; border: 1px solid #444; font-size: 16px; }
-        .lista { width: 100%; max-width: 350px; margin-top: 20px; display: none; background: #1a1a1a; padding: 10px; border-radius: 10px; }
+        .card { background: #1e1e1e; padding: 20px; width: 100%; max-width: 350px; border-radius: 15px; text-align: center; border-bottom: 5px solid #2ecc71; box-sizing: border-box; box-shadow: 0 10px 20px rgba(0,0,0,0.5); }
+        input { width: 100%; padding: 12px; margin: 8px 0; border-radius: 8px; background: #2a2a2a; color: white; border: 1px solid #444; font-size: 16px; box-sizing: border-box; }
+        .lista-container { width: 100%; max-width: 350px; margin-top: 15px; display: none; background: #1a1a1a; padding: 15px; border-radius: 10px; border: 1px solid #333; }
+        .item-row { display: flex; justify-content: space-between; border-bottom: 1px solid #333; padding: 10px 0; font-size: 14px; }
     </style>
 </head>
 <body>
 
-    <h2>🔎 Consultor de Preços</h2>
+    <h2 style="color:#2ecc71;">🔎 Consultor Pro</h2>
     
-    <button class="btn" style="background:#2ecc71; color:white;" id="btnScan" onclick="ligarCamera()">ABRIR CÂMERA</button>
+    <button class="btn" style="background:#2ecc71; color:white;" id="btnScan" onclick="ligarCamera()">ABRIR SCANNER</button>
 
     <div id="camera"></div>
 
-    <div id="resultado" class="card">Aguardando bip...</div>
+    <div id="resultado" class="card">Aguardando leitura...</div>
 
     <div id="formCadastro" class="card" style="display:none; margin-top: 15px; border-color: #3498db;">
         <h3 style="color:#3498db; margin:0;">Cadastrar Produto</h3>
-        <input type="text" id="cadCodigo" readonly style="color:#888;">
+        <input type="text" id="cadCodigo" readonly style="background:#111; color:#888; border:none;">
         <input type="text" id="cadNome" placeholder="Nome do Produto">
         <input type="number" id="cadPreco" step="0.01" placeholder="Preço R$">
-        <button class="btn" style="background:#3498db; color:white;" onclick="salvar()">SALVAR PRODUTO</button>
+        <button class="btn" style="background:#3498db; color:white;" onclick="salvar()">SALVAR AGORA</button>
     </div>
 
     <div style="display:flex; gap:10px; width:100%; max-width:350px; margin-top:20px;">
-        <button onclick="toggleLista()" style="flex:1; padding:10px; background:#444; color:white; border:none; border-radius:5px;">📋 LISTA</button>
-        <button onclick="limparTudo()" style="flex:1; padding:10px; background:#c0392b; color:white; border:none; border-radius:5px;">🚨 LIMPAR</button>
+        <button class="btn" style="background:#444; color:white; flex:1;" onclick="toggleLista()">📋 LISTA</button>
+        <button class="btn" style="background:#c0392b; color:white; flex:1;" onclick="limparTudo()">🚨 LIMPAR</button>
     </div>
 
-    <div id="lista" class="lista"></div>
+    <div id="lista" class="lista-container"></div>
 
 <script>
-    // GARANTE QUE O BANCO É LIDO DO ZERO
-    function obterDados() {
+    // FUNÇÃO DE LIMPEZA - Remove tudo que não for Alfanumérico
+    function limparString(str) {
+        return str.toString().replace(/[^a-zA-Z0-9]/g, "").trim();
+    }
+
+    function obterEstoque() {
         return JSON.parse(localStorage.getItem('meuEstoque')) || [];
     }
 
@@ -51,11 +56,12 @@
         document.getElementById('camera').style.display = "block";
         document.getElementById('btnScan').style.display = "none";
         document.getElementById('formCadastro').style.display = "none";
-        document.getElementById('resultado').innerHTML = "Buscando barras...";
+        document.getElementById('resultado').innerHTML = "Bipando...";
 
         Quagga.init({
             inputStream: { name: "Live", type: "LiveStream", target: document.getElementById('camera'), constraints: { facingMode: "environment" } },
-            decoder: { readers: ["ean_reader", "ean_8_reader", "code_128_reader"] }
+            decoder: { readers: ["ean_reader", "ean_8_reader", "code_128_reader"] },
+            locate: true
         }, function(err) {
             if (err) return alert("Erro na câmera!");
             Quagga.start();
@@ -71,20 +77,21 @@
     }
 
     function processar(cod) {
-        const estoque = obterDados();
-        const codLimpo = cod.toString().trim();
+        const estoque = obterEstoque();
+        const codLimpo = limparString(cod); // Limpa o código lido agora
         
-        // BUSCA IGNORANDO TIPOS (TEXTO OU NÚMERO)
-        const p = estoque.find(x => x.codigo.toString().trim() === codLimpo);
+        // Busca comparando códigos limpados
+        const p = estoque.find(x => limparString(x.codigo) === codLimpo);
 
         if (p) {
+            document.getElementById('formCadastro').style.display = "none";
             document.getElementById('resultado').innerHTML = `
                 <h2 style="color:#2ecc71; margin:0;">${p.nome.toUpperCase()}</h2>
-                <div style="font-size:38px; font-weight:bold;">R$ ${parseFloat(p.preco).toFixed(2)}</div>
-                <small>Cód: ${codLimpo}</small>
+                <div style="font-size:40px; font-weight:bold; margin:10px 0;">R$ ${parseFloat(p.preco).toFixed(2)}</div>
+                <small style="color:#666;">CÓD: ${codLimpo}</small>
             `;
         } else {
-            document.getElementById('resultado').innerHTML = "<b style='color:red'>NÃO CADASTRADO</b>";
+            document.getElementById('resultado').innerHTML = "<b style='color:#e74c3c;'>NÃO ENCONTRADO</b>";
             document.getElementById('cadCodigo').value = codLimpo;
             document.getElementById('cadNome').value = "";
             document.getElementById('cadPreco').value = "";
@@ -97,33 +104,39 @@
         const nome = document.getElementById('cadNome').value;
         const preco = document.getElementById('cadPreco').value;
 
-        if(!nome || !preco) return alert("Preencha tudo!");
+        if(!nome || !preco) return alert("Preencha Nome e Preço!");
 
-        let estoque = obterDados();
-        // Remove versão antiga do mesmo código se existir
-        estoque = estoque.filter(x => x.codigo.toString().trim() !== cod.toString().trim());
+        let estoque = obterEstoque();
+        const codLimpo = limparString(cod);
+
+        // Remove duplicatas (com limpeza)
+        estoque = estoque.filter(x => limparString(x.codigo) !== codLimpo);
         
-        estoque.push({ codigo: cod, nome, preco });
+        estoque.push({ codigo: codLimpo, nome: nome, preco: preco });
         localStorage.setItem('meuEstoque', JSON.stringify(estoque));
         
-        alert("Salvo com sucesso!");
+        alert("Produto Salvo!");
         document.getElementById('formCadastro').style.display = "none";
-        processar(cod); // Testa a leitura na hora
+        processar(codLimpo); // Testa na hora se ele reconhece
     }
 
     function toggleLista() {
         const l = document.getElementById('lista');
         if(l.style.display === "block") { l.style.display = "none"; return; }
-        const estoque = obterDados();
-        l.innerHTML = "<h4>Produtos:</h4>";
-        estoque.forEach(p => {
-            l.innerHTML += `<div style="border-bottom:1px solid #333; padding:5px;">${p.nome} - R$ ${p.preco}</div>`;
-        });
+        
+        const estoque = obterEstoque();
+        if(estoque.length === 0) { l.innerHTML = "Vazio"; }
+        else {
+            l.innerHTML = "<strong>Itens:</strong><br>";
+            estoque.forEach(p => {
+                l.innerHTML += `<div class="item-row"><span>${p.nome}</span> <b>R$ ${p.preco}</b></div>`;
+            });
+        }
         l.style.display = "block";
     }
 
     function limparTudo() {
-        if(confirm("Apagar tudo?")) {
+        if(confirm("🚨 APAGAR TUDO?")) {
             localStorage.clear();
             location.reload();
         }
