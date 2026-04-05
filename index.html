@@ -3,83 +3,103 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Scanner Profissional v8</title>
+    <title>Scanner Precisão Máxima</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
     <style>
-        body { font-family: sans-serif; background: #121212; color: white; padding: 15px; text-align: center; margin: 0; }
+        body { font-family: sans-serif; background: #000; color: white; margin: 0; padding: 15px; display: flex; flex-direction: column; align-items: center; }
         .btn { width: 100%; max-width: 350px; padding: 18px; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; margin-bottom: 10px; font-size: 16px; }
-        #camera { width: 100%; max-width: 400px; height: 250px; background: #000; border-radius: 20px; display: none; position: relative; border: 3px solid #2ecc71; margin: 0 auto 15px; overflow: hidden; }
+        #camera { width: 100%; max-width: 400px; height: 200px; background: #111; border-radius: 20px; display: none; position: relative; border: 3px solid #2ecc71; margin-bottom: 15px; overflow: hidden; }
         #camera video { width: 100%; height: 100%; object-fit: cover; }
-        #camera::after { content: ""; position: absolute; top: 50%; left: 5%; width: 90%; height: 2px; background: red; box-shadow: 0 0 10px red; }
-        .card { background: #1e1e1e; padding: 25px; border-radius: 20px; border-bottom: 5px solid #2ecc71; margin-bottom: 15px; box-shadow: 0 10px 20px rgba(0,0,0,0.4); }
-        input { width: 100%; padding: 15px; margin: 10px 0; border-radius: 10px; background: #222; color: white; border: 1px solid #444; font-size: 18px; box-sizing: border-box; }
+        .card { background: #1a1a1a; padding: 25px; width: 100%; max-width: 350px; border-radius: 20px; border-bottom: 5px solid #2ecc71; box-sizing: border-box; text-align: center; }
+        input { width: 100%; padding: 15px; margin: 10px 0; border-radius: 10px; background: #222; color: #0f0; border: 1px solid #444; font-size: 20px; text-align: center; font-family: monospace; }
+        #msg { color: #2ecc71; font-weight: bold; margin-bottom: 10px; height: 20px; }
     </style>
 </head>
 <body>
 
-    <h2 style="color:#2ecc71;">🔎 Consultor de Preços</h2>
+    <h2 style="color:#2ecc71; margin-bottom: 5px;">🔎 Scanner 9.0</h2>
+    <div id="msg"></div>
     
-    <button class="btn" style="background:#2ecc71; color:white;" id="btnAtivar" onclick="iniciar()">ABRIR SCANNER</button>
+    <button class="btn" style="background:#2ecc71; color:white;" id="btnScan" onclick="ligar()">ABRIR SCANNER</button>
 
     <div id="camera"></div>
 
-    <div id="resultado" class="card">Aproxime o código de barras...</div>
+    <div id="resultado" class="card">Aguardando leitura...</div>
 
-    <div id="formCad" class="card" style="display:none; border-color:#3498db;">
-        <h3 style="color:#3498db;">Novo Produto</h3>
-        <input type="text" id="codFinal" readonly style="background:#000; color:#0f0; border:none; text-align:center; font-family:monospace;">
-        <input type="text" id="nomeProd" placeholder="Nome do Produto">
-        <input type="number" id="precoProd" step="0.01" placeholder="Preço R$">
-        <button class="btn" style="background:#3498db; color:white;" onclick="salvar()">SALVAR PRODUTO</button>
+    <div id="formCad" class="card" style="display:none; border-color:#3498db; margin-top:15px;">
+        <h3 style="color:#3498db; margin:0;">Novo Cadastro</h3>
+        <input type="text" id="codFinal" readonly>
+        <input type="text" id="nomeProd" placeholder="Nome do Produto" style="color:white; font-family:sans-serif; font-size:16px; text-align:left;">
+        <input type="number" id="precoProd" step="0.01" placeholder="Preço R$" style="color:white; font-family:sans-serif; font-size:16px; text-align:left;">
+        <button class="btn" style="background:#3498db; color:white;" onclick="salvar()">GRAVAR PRODUTO</button>
     </div>
 
-    <button class="btn" style="background:#444; color:#ccc; margin-top:30px; padding:10px;" onclick="ver()">LISTAR MEMÓRIA</button>
-    <button class="btn" style="background:#c0392b; color:white; padding:10px;" onclick="localStorage.clear(); location.reload();">ZERAR TUDO</button>
+    <button class="btn" style="background:#333; color:#888; margin-top:30px; font-size:12px;" onclick="localStorage.clear(); location.reload();">🚨 LIMPAR TUDO E REINICIAR</button>
 
 <script>
-    function iniciar() {
+    let ultimosCodigos = [];
+
+    function ligar() {
         document.getElementById('camera').style.display = "block";
-        document.getElementById('btnAtivar').style.display = "none";
+        document.getElementById('btnScan').style.display = "none";
         document.getElementById('formCad').style.display = "none";
+        document.getElementById('msg').innerText = "Foque no código de barras...";
         
         Quagga.init({
-            inputStream: { name: "Live", type: "LiveStream", target: document.querySelector("#camera"), constraints: { facingMode: "environment" } },
-            // FORÇANDO APENAS LEITORES DE MERCADO (EAN)
-            decoder: { readers: ["ean_reader", "ean_8_reader"] },
-            locate: true
+            inputStream: { 
+                name: "Live", type: "LiveStream", target: document.querySelector("#camera"),
+                constraints: { facingMode: "environment", focusMode: "continuous" }
+            },
+            decoder: { 
+                readers: ["ean_reader", "ean_8_reader", "code_128_reader"],
+                multiple: false 
+            },
+            locate: true,
+            halfSample: true // Melhora leitura de códigos pequenos
         }, function(err) {
-            if (err) return alert("Erro: " + err);
+            if (err) return alert(err);
             Quagga.start();
         });
 
         Quagga.onDetected(function(data) {
             const code = data.codeResult.code;
-            // Só aceita se o código tiver 8 ou 13 dígitos (padrão EAN)
-            if (code.length >= 8) {
-                Quagga.stop();
-                document.getElementById('camera').style.display = "none";
-                document.getElementById('btnAtivar').style.display = "block";
-                buscar(code);
+            
+            // FILTRO DE ESTABILIDADE: Precisa ler o mesmo código 3 vezes para confirmar
+            ultimosCodigos.push(code);
+            if (ultimosCodigos.length > 3) {
+                const confere = ultimosCodigos.every(v => v === ultimosCodigos[0]);
+                if (confere) {
+                    Quagga.stop();
+                    ultimosCodigos = [];
+                    document.getElementById('camera').style.display = "none";
+                    document.getElementById('btnScan').style.display = "block";
+                    buscar(code);
+                } else {
+                    ultimosCodigos.shift();
+                }
             }
         });
     }
 
     function buscar(cod) {
-        const db = JSON.parse(localStorage.getItem('meuEstoque')) || [];
-        // Limpeza absoluta para comparar
-        const limpo = cod.toString().trim();
-        const achou = db.find(p => p.codigo.toString().trim() === limpo);
+        const db = JSON.parse(localStorage.getItem('estoque')) || [];
+        const codLido = String(cod).trim();
+        
+        // Busca exata ou por final do código (ajuda se o scanner comer dígitos iniciais)
+        const achou = db.find(p => String(p.c).trim() === codLido);
 
         if (achou) {
             document.getElementById('resultado').innerHTML = `
-                <h1 style="color:#2ecc71; margin:0; font-size:40px;">${achou.nome.toUpperCase()}</h1>
-                <div style="font-size:50px; font-weight:bold; margin:10px 0;">R$ ${parseFloat(achou.preco).toFixed(2)}</div>
-                <small style="color:#888;">CÓD: ${limpo}</small>
+                <h2 style="color:#2ecc71; margin:0;">${achou.n.toUpperCase()}</h2>
+                <div style="font-size:45px; font-weight:bold; margin:10px 0;">R$ ${parseFloat(achou.p).toFixed(2)}</div>
+                <small style="color:#666;">CÓD: ${codLido}</small>
             `;
+            document.getElementById('msg').innerText = "Produto Encontrado!";
         } else {
             document.getElementById('resultado').innerHTML = "<b style='color:#e74c3c;'>NÃO CADASTRADO</b>";
-            document.getElementById('codFinal').value = limpo;
+            document.getElementById('codFinal').value = codLido;
             document.getElementById('formCad').style.display = "block";
+            document.getElementById('msg').innerText = "";
         }
     }
 
@@ -88,20 +108,15 @@
         const nome = document.getElementById('nomeProd').value;
         const preco = document.getElementById('precoProd').value;
         
-        if(!nome || !preco) return alert("Preencha nome e preço!");
+        if(!nome || !preco) return alert("Preencha Nome e Preço!");
 
-        let db = JSON.parse(localStorage.getItem('meuEstoque')) || [];
-        db.push({ codigo: cod, nome: nome, preco: preco });
-        localStorage.setItem('meuEstoque', JSON.stringify(db));
+        let db = JSON.parse(localStorage.getItem('estoque')) || [];
+        db.push({ c: cod, n: nome, p: preco });
+        localStorage.setItem('estoque', JSON.stringify(db));
         
-        alert("Gravado!");
+        alert("Gravado com sucesso!");
         document.getElementById('formCad').style.display = "none";
         buscar(cod);
-    }
-
-    function ver() {
-        const db = localStorage.getItem('meuEstoque');
-        alert(db ? db : "Vazio");
     }
 </script>
 </body>
